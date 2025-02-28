@@ -1,7 +1,7 @@
 1. Client sends registration info (username for now, 28-02-2025)
 	- Account metadata registered as **unconfirmed** on the server.
 	- Server returns one time registration token for user, stored temporarily.
-2. Yappa certificate request by user, CSR (Certificate Signing Request)
+2. Certificate request by user, CSR (Certificate Signing Request)
 	- User generates asymmetric key pairs. (ECDH)
 	- User send CSR to a separate CA server that will sign the user's certificate, for use in Yappa, as well as the token.
 3. CA server signing of certificate
