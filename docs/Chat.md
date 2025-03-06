@@ -45,17 +45,19 @@ Private group chats require permission to enter, but can be viewed in the result
 
 Just like direct chats, group chat also need an anonymous inbox for pending messages.
 
-The group creator acts as the group admin. (Maybe think about having multiple admins. Complexity in adding, removing admins from a group). 
-## Cases
-1. User tries to enter a public group where at least one member is active. Said active user is notified in order to exchange privately the inbox id of the group (using the new member's public key).
+The group creator acts as the group admin. (Maybe think about having multiple admins. Complexity in adding, removing admins from a group).
+
+## Join group cases
+1. User tries to enter a public group where at least one member is active. Said active user is notified in order to exchange privately the inbox id of the group(using the new member's public key).
    
 2. User tries to enter a public group where no users are currently active. 
-   Option A, not allowed, wait for when group has active chatters (don't show groups with 0 active chatters in the list). 
-   Option B, some kind of public group inbox just like user public inboxes. Content is the name of the user. First member of the chat to connect reads from the public inbox and sends to the user (or their inbox if they are not connected) the inbox id.
+   Option A, not allowed, wait for when group has active chatters (don't show groups with 0 active chatters in the group list). 
+   Option B, some kind of public group inbox just like user public inboxes. Content is the name of the user. First member of the chat to connect reads from the public inbox and sends to the user (or their inbox if they are not connected) the group inbox id.
    
 3. User tries to enter a private group.
    Option. Reuse option B from public group with no users case. Use a public user inbox for the group as a "Request to enter". Group admin may choose to accept, reject or ignore (save for later) a request for entry. 
    The user needs to wait to be accepted anyway, so it doesn't matter if there are active users or not in the group chat.
+   Private groups will have a random password that needs to be provided and correct when connecting to the group. See [Messaging](##Messaging).
 
 ## Group admin
 A group admin manages entry requests from non-members.
@@ -65,3 +67,12 @@ The original group creator automatically becomes the group admin and may add or 
 Admins that aren't the original creator of the group may only accept or reject entry requests. They do not have the power to add or remove admins.
 
 TODO: how to manage without saving the user admin in the database. How to add/remove more admins
+
+## Messaging
+Group metadata is not saved in the database, meaning we do not know which users are part of a group. We do, however, need to know at runtime which users are connected to a group.
+
+Users locally know which groups they are part of, so when connecting to the server, apart from the certificate and requesting inbox messages, it will also send a list of groups that it wants to receive messages from while connected. The server will have a map of [group]&rarr;[users], to keep to track of which users to broadcast group messages to (as well as [user]&rarr;[groups] to remove users from groups when they disconnect).
+
+To prevent users from sending a list and connecting to groups they haven't officially joined, groups have passwords generated during the creation of the group that need to be provided at the time of connection to validate that the user is actually a part of the group.
+
+The password will be saved with the group in the database hashed/PBKDF'd (?) using Argon2.
