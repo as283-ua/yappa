@@ -2,24 +2,36 @@ package page
 
 import (
 	"math/rand/v2"
+	"strings"
 
 	"github.com/as283-ua/yappa/internal/client/ui"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type MainPage struct {
 	titleScreen string
 	cursor      int
-	options     []string
+	options     []Option
 }
 
 func NewMainPage() MainPage {
+	titleScreen := ui.Titles[rand.Int()%len(ui.Titles)]
+	lines := strings.Count(titleScreen, "\n") + 1
+	totalLines := 15
+
+	for i := 0; i < (totalLines-lines)/2; i++ {
+		titleScreen = "\n" + titleScreen
+	}
+
+	for i := lines + (totalLines-lines)/2; i < totalLines; i++ {
+		titleScreen += "\n"
+	}
+
 	return MainPage{
-		options: []string{
-			"Exit",
+		options: []Option{
+			Exit{},
 		},
-		titleScreen: ui.Titles[rand.Int()%len(ui.Titles)],
+		titleScreen: titleScreen,
 	}
 }
 
@@ -28,6 +40,9 @@ func (m MainPage) Init() tea.Cmd {
 }
 
 func (m MainPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var model tea.Model = m
+	var cmd tea.Cmd = nil
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -42,15 +57,22 @@ func (m MainPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = len(m.options) - 1
 			}
 		case "q", "ctrl+c":
-			return m, tea.Quit
+			cmd = tea.Quit
 		case "enter", "right":
-			return m, nil
+			var cmdTemp tea.Cmd
+			var modelTemp tea.Model
+			modelTemp, cmdTemp = m.options[m.cursor].Select()
+			if cmdTemp != nil {
+				cmd = tea.Batch(cmd, cmdTemp)
+			}
+
+			if modelTemp != nil {
+				model = modelTemp
+			}
 		}
 	}
-	return m, nil
+	return model, cmd
 }
-
-var WhiteForeground = lipgloss.NewStyle().Foreground(lipgloss.Color("#000")).Background(lipgloss.Color("#FFF"))
 
 func (m MainPage) View() string {
 	s := ""
@@ -59,9 +81,9 @@ func (m MainPage) View() string {
 
 	for i, option := range m.options {
 		if i == m.cursor {
-			s += WhiteForeground.Render("> ", option)
+			s += ui.WhiteForeground.Render("> ", option.String())
 		} else {
-			s += "  " + option
+			s += "  " + option.String()
 		}
 		s += "\n"
 	}
