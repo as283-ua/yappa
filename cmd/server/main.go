@@ -19,8 +19,8 @@ var (
 
 func main() {
 	addr = flag.String("ip", "0.0.0.0:4433", "Host IP and port")
-	cert = flag.String("cert", "localhost.pem", "TLS Certificate")
-	key = flag.String("key", "localhost-key.pem", "TLS Key")
+	cert = flag.String("cert", "certs/server/server.crt", "TLS Certificate")
+	key = flag.String("key", "certs/server/server.key", "TLS Key")
 
 	router := http.NewServeMux()
 
