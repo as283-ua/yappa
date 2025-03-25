@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"log"
@@ -29,7 +30,14 @@ func getHashCert() ([]byte, error) {
 		return nil, err
 	}
 
-	hash := sha256.Sum256(content)
+	block, _ := pem.Decode(content)
+	cert, err := x509.ParseCertificate(block.Bytes)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	hash := sha256.Sum256(cert.Raw)
 
 	return hash[:], nil
 }
@@ -64,7 +72,7 @@ func main() {
 		TLSConfig: TLSConfig(),
 	}
 
-	if err := server.ListenAndServeTLS(*cert, *key); err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -83,15 +91,12 @@ func TLSConfig() *tls.Config {
 		log.Fatal("Failed to read root CA certificate:", err)
 	}
 
-	if !rootCAs.AppendCertsFromPEM(caCert) {
-		log.Fatal("Failed to append root CA certificate")
-	}
+	rootCAs.AppendCertsFromPEM(caCert)
 
 	return &tls.Config{
-		MinVersion:   tls.VersionTLS13,
 		Certificates: []tls.Certificate{cert},
-		NextProtos:   []string{"h3"},
+		ClientCAs:    rootCAs,
 		ClientAuth:   tls.RequireAndVerifyClientCert,
-		RootCAs:      rootCAs,
+		NextProtos:   []string{"h3"},
 	}
 }

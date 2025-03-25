@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"crypto/sha256"
+	"log"
 	"net/http"
 )
 
@@ -19,7 +20,9 @@ func IsChatServer(serverCertHash []byte, next http.Handler) http.Handler {
 		}
 
 		if !isServer {
+			log.Printf("Unauthorized access to restricted end-point by %v\n", req.RemoteAddr)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
 		}
 
 		next.ServeHTTP(w, req)

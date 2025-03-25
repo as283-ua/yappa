@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/x509"
 	"encoding/pem"
+	"io"
 	"net/http"
 	"sync"
 )
@@ -14,8 +15,9 @@ var mu sync.Mutex
 func AllowUser(w http.ResponseWriter, req *http.Request) {
 	username := req.PathValue("username")
 	token := make([]byte, req.ContentLength)
+
 	_, err := req.Body.Read(token)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return
@@ -65,15 +67,7 @@ func SignCert(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Now sign the CSR using your CA private key (simplified for this example)
-	// CA's private key signing process here (we assume you already have it loaded)
-
-	// Create and sign the certificate using the CA’s private key
-	// (Use x509.CreateCertificate to generate the certificate here)
-	// For simplicity, we will skip the actual certificate creation in this example
-
-	// Respond with the signed certificate (example here)
-	w.Write([]byte("Signed certificate would be sent here"))
+	w.Write([]byte("Signed cert goes here"))
 	w.WriteHeader(200)
 	w.Write([]byte("Work in progress"))
 }
