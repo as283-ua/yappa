@@ -22,6 +22,8 @@ var (
 	serverCert *string
 	key        *string
 	rootCa     *string
+	caCert     *x509.Certificate
+	caKey      any
 )
 
 func getHashCert() ([]byte, error) {
@@ -42,12 +44,47 @@ func getHashCert() ([]byte, error) {
 	return hash[:], nil
 }
 
+func loadCA() error {
+	caCertBytes, err := os.ReadFile("certs/ca/ca.crt")
+	if err != nil {
+		return err
+	}
+	block, _ := pem.Decode(caCertBytes)
+
+	caCert, err = x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return err
+	}
+
+	caKeyBytes, err := os.ReadFile("certs/ca/ca.key")
+	if err != nil {
+		return err
+	}
+
+	block, _ = pem.Decode(caKeyBytes)
+
+	caKey, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	addr = flag.String("ip", "0.0.0.0:4434", "Host IP and port")
 	cert = flag.String("cert", "certs/ca_server/ca_server.crt", "TLS Certificate")
 	key = flag.String("key", "certs/ca_server/ca_server.key", "TLS Key")
 	serverCert = flag.String("server-cert", "certs/server/server.crt", "TLS Certificate for chat server")
 	rootCa = flag.String("ca", "certs/ca/ca.crt", "Root CA certificate")
+
+	flag.Parse()
+
+	err := loadCA()
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	serverCertHash, err := getHashCert()
 
@@ -58,8 +95,8 @@ func main() {
 
 	router := http.NewServeMux()
 
-	router.Handle("POST /allow/{username}", middleware.IsChatServer(serverCertHash, http.HandlerFunc(handler.AllowUser)))
-	router.Handle("POST /sign/{username}", http.HandlerFunc(handler.SignCert))
+	router.Handle("POST /allow", middleware.IsChatServer(serverCertHash, http.HandlerFunc(handler.AllowUser)))
+	router.Handle("POST /sign", http.HandlerFunc(handler.SignCert(caCert, caKey)))
 	router.Handle("GET /certificates", http.HandlerFunc(handler.Getcertificates))
 	router.Handle("POST /revoke/{username}", http.HandlerFunc(handler.Revoke))
 	router.Handle("POST /reinstate/{username}", http.HandlerFunc(handler.Reinstate))

@@ -6,6 +6,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/quic-go/quic-go v0.50.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
