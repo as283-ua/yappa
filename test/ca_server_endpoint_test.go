@@ -3,8 +3,6 @@ package test
 import (
 	"bytes"
 	"crypto/rand"
-	"crypto/tls"
-	"crypto/x509"
 	"io"
 	"log"
 	"net/http"
@@ -13,47 +11,12 @@ import (
 
 	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/ca"
-	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
 	"google.golang.org/protobuf/proto"
 )
 
-func getHttp3Client(certificateOwner string) *http.Client {
-	rootCAs := x509.NewCertPool()
-	caCertPath := "../certs/ca/ca.crt"
-
-	caCert, err := os.ReadFile(caCertPath)
-	if err != nil {
-		log.Fatal("Failed to read root CA certificate:", err)
-	}
-
-	rootCAs.AppendCertsFromPEM(caCert)
-
-	tlsConfig := &tls.Config{
-		RootCAs:    rootCAs,
-		NextProtos: []string{"h3"},
-	}
-
-	if certificateOwner != "" {
-		cert, err := tls.LoadX509KeyPair("../certs/"+certificateOwner+"/"+certificateOwner+".crt", "../certs/"+certificateOwner+"/"+certificateOwner+".key")
-		if err != nil {
-			log.Fatal(err)
-		}
-		tlsConfig.Certificates = append(tlsConfig.Certificates, cert)
-	}
-
-	transport := &http3.Transport{
-		TLSClientConfig: tlsConfig,
-		QUICConfig:      &quic.Config{},
-	}
-
-	return &http.Client{
-		Transport: transport,
-	}
-}
-
-func runTestServer() *http3.Server {
-	server, err := ca.SetupServer(DefaultTestServerArguments())
+func runCaServer() *http3.Server {
+	server, err := ca.SetupServer(defaultCaServerArguments())
 
 	if err != nil {
 		log.Fatal("Error booting server: ", err)
@@ -66,7 +29,7 @@ func runTestServer() *http3.Server {
 	return server
 }
 
-func DefaultTestServerArguments() *ca.CmdArgs {
+func defaultCaServerArguments() *ca.CmdArgs {
 	return &ca.CmdArgs{
 		Addr:           "127.0.0.1:4435",
 		Cert:           "../certs/ca_server/ca_server.crt",
@@ -78,10 +41,10 @@ func DefaultTestServerArguments() *ca.CmdArgs {
 }
 
 func TestAllowNoCert(t *testing.T) {
-	server := runTestServer()
+	server := runCaServer()
 	defer server.Close()
 
-	client := getHttp3Client("")
+	client := GetHttp3Client("../certs", "", "../certs/ca/ca.crt")
 
 	token := make([]byte, 64)
 	rand.Read(token)
@@ -111,10 +74,10 @@ func TestAllowNoCert(t *testing.T) {
 }
 
 func TestAllowServerCert(t *testing.T) {
-	server := runTestServer()
+	server := runCaServer()
 	defer server.Close()
 
-	client := getHttp3Client("server")
+	client := GetHttp3Client("../certs", "server", "../certs/ca/ca.crt")
 
 	token := make([]byte, 64)
 	rand.Read(token)
@@ -144,10 +107,10 @@ func TestAllowServerCert(t *testing.T) {
 }
 
 func TestAllowTestCert(t *testing.T) {
-	server := runTestServer()
+	server := runCaServer()
 	defer server.Close()
 
-	client := getHttp3Client("test")
+	client := GetHttp3Client("../certs", "test", "../certs/ca/ca.crt")
 	token := make([]byte, 64)
 	rand.Read(token)
 
@@ -176,10 +139,10 @@ func TestAllowTestCert(t *testing.T) {
 }
 
 func TestAllowAndSignCert(t *testing.T) {
-	server := runTestServer()
+	server := runCaServer()
 	defer server.Close()
 
-	clientServe := getHttp3Client("server")
+	clientServe := GetHttp3Client("../certs", "server", "../certs/ca/ca.crt")
 	token := make([]byte, 64)
 	rand.Read(token)
 
@@ -207,7 +170,7 @@ func TestAllowAndSignCert(t *testing.T) {
 		t.FailNow()
 	}
 
-	clientUser := getHttp3Client("test")
+	clientUser := GetHttp3Client("../certs", "test", "../certs/ca/ca.crt")
 
 	csr, err := os.ReadFile("../certs/test.csr")
 
