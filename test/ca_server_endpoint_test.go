@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/internal/ca"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
 	"google.golang.org/protobuf/proto"
@@ -51,7 +52,35 @@ func getHttp3Client(certificateOwner string) *http.Client {
 	}
 }
 
+func runTestServer() *http3.Server {
+	server, err := ca.SetupServer(DefaultTestServerArguments())
+
+	if err != nil {
+		log.Fatal("Error booting server: ", err)
+	}
+
+	go func() {
+		server.ListenAndServe()
+	}()
+
+	return server
+}
+
+func DefaultTestServerArguments() *ca.CmdArgs {
+	return &ca.CmdArgs{
+		Addr:           "127.0.0.1:4435",
+		Cert:           "../certs/ca_server/ca_server.crt",
+		Key:            "../certs/ca_server/ca_server.key",
+		ChatServerCert: "../certs/server/server.crt",
+		RootCa:         "../certs/ca/ca.crt",
+		CaKey:          "../certs/ca/ca.key",
+	}
+}
+
 func TestAllowNoCert(t *testing.T) {
+	server := runTestServer()
+	defer server.Close()
+
 	client := getHttp3Client("")
 
 	token := make([]byte, 64)
@@ -69,14 +98,22 @@ func TestAllowNoCert(t *testing.T) {
 		t.FailNow()
 	}
 
-	_, err = client.Post("https://yappa.io:4434/allow", "application/x-protobuf", bytes.NewReader(data))
+	resp, err := client.Post("https://yappa.io:4435/allow", "application/x-protobuf", bytes.NewReader(data))
 
-	if err == nil {
-		t.Error("Not providing a certificate should give an error")
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Error("Status should be", http.StatusUnauthorized)
 	}
 }
 
 func TestAllowServerCert(t *testing.T) {
+	server := runTestServer()
+	defer server.Close()
+
 	client := getHttp3Client("server")
 
 	token := make([]byte, 64)
@@ -94,7 +131,7 @@ func TestAllowServerCert(t *testing.T) {
 		t.FailNow()
 	}
 
-	resp, err := client.Post("https://yappa.io:4434/allow", "application/x-protobuf", bytes.NewReader(data))
+	resp, err := client.Post("https://yappa.io:4435/allow", "application/x-protobuf", bytes.NewReader(data))
 
 	if err != nil {
 		t.Error(err)
@@ -107,6 +144,9 @@ func TestAllowServerCert(t *testing.T) {
 }
 
 func TestAllowTestCert(t *testing.T) {
+	server := runTestServer()
+	defer server.Close()
+
 	client := getHttp3Client("test")
 	token := make([]byte, 64)
 	rand.Read(token)
@@ -123,7 +163,7 @@ func TestAllowTestCert(t *testing.T) {
 		t.FailNow()
 	}
 
-	resp, err := client.Post("https://yappa.io:4434/allow", "application/x-protobuf", bytes.NewReader(data))
+	resp, err := client.Post("https://yappa.io:4435/allow", "application/x-protobuf", bytes.NewReader(data))
 
 	if err != nil {
 		t.Error(err)
@@ -136,6 +176,9 @@ func TestAllowTestCert(t *testing.T) {
 }
 
 func TestAllowAndSignCert(t *testing.T) {
+	server := runTestServer()
+	defer server.Close()
+
 	clientServe := getHttp3Client("server")
 	token := make([]byte, 64)
 	rand.Read(token)
@@ -152,7 +195,7 @@ func TestAllowAndSignCert(t *testing.T) {
 		t.FailNow()
 	}
 
-	resp, err := clientServe.Post("https://yappa.io:4434/allow", "application/x-protobuf", bytes.NewReader(data))
+	resp, err := clientServe.Post("https://yappa.io:4435/allow", "application/x-protobuf", bytes.NewReader(data))
 
 	if err != nil {
 		t.Error(err)
@@ -181,7 +224,7 @@ func TestAllowAndSignCert(t *testing.T) {
 
 	data, _ = proto.Marshal(certRequest)
 
-	resp, err = clientUser.Post("https://yappa.io:4434/sign", "application/x-protobuf", bytes.NewReader(data))
+	resp, err = clientUser.Post("https://yappa.io:4435/sign", "application/x-protobuf", bytes.NewReader(data))
 
 	if err != nil {
 		t.Error(err)
