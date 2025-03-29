@@ -9,7 +9,7 @@ import (
 )
 
 func runChatServer() *http3.Server {
-	server, err := server.SetupServer(defaultChatServerArguments())
+	server, err := server.SetupServer(&defaultArgs)
 
 	if err != nil {
 		log.Fatal("Error booting server: ", err)
@@ -22,16 +22,16 @@ func runChatServer() *http3.Server {
 	return server
 }
 
-func defaultChatServerArguments() *server.CmdArgs {
-	return &server.CmdArgs{
-		Addr: "127.0.0.1:4435",
-		Cert: "../certs/ca_server/ca_server.crt",
-		Key:  "../certs/ca_server/ca_server.key",
-	}
+var defaultArgs server.CmdArgs = server.CmdArgs{
+	Addr:   "127.0.0.1:4435",
+	Cert:   "../certs/ca_server/ca_server.crt",
+	Key:    "../certs/ca_server/ca_server.key",
+	CaCert: "../certs/ca/ca.crt",
 }
 
 func TestRegister(t *testing.T) {
 	server := runChatServer()
 	defer server.Close()
 
+	// ...
 }

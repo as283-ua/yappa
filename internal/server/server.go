@@ -57,8 +57,6 @@ func SetupServer(cmdArgs *CmdArgs) (*http3.Server, error) {
 
 	router.Handle("CONNECT /connect", http.HandlerFunc(handler.HandleConnection))
 
-	fmt.Println("Server started on https://" + args.Addr)
-
 	return &http3.Server{
 		Addr:      args.Addr,
 		Handler:   router,
