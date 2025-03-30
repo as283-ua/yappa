@@ -1,77 +1,75 @@
 package server
 
 import (
+	"bufio"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
+	"github.com/as283-ua/yappa/internal/server/db"
 	"github.com/as283-ua/yappa/internal/server/handler"
+	"github.com/as283-ua/yappa/internal/server/settings"
+	"github.com/as283-ua/yappa/pkg/common"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/quic-go/quic-go/http3"
 )
 
-type CmdArgs struct {
-	Addr   string
-	Cert   string
-	Key    string
-	CaCert string
-}
-
-func (c *CmdArgs) Validate() error {
-	if c.Addr == "" {
-		return fmt.Errorf("address must not be empty")
-	}
-
-	if c.Cert == "" {
-		return fmt.Errorf("cert must not be empty")
-	}
-
-	if c.Key == "" {
-		return fmt.Errorf("key must not be empty")
-	}
-
-	return nil
-}
-
 var (
-	args      *CmdArgs
 	tlsConfig *tls.Config
 )
 
-func SetupServer(cmdArgs *CmdArgs) (*http3.Server, error) {
-	args = cmdArgs
-	err := args.Validate()
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
+}
 
-	if err != nil {
-		return nil, err
+func setupDB(ctx context.Context) *pgxpool.Pool {
+	user := getEnv("YAPPA_DB_USER", "yappa")
+	host := getEnv("YAPPA_DB_HOST", "localhost:5432")
+	pass, exists := os.LookupEnv("YAPPA_MASTER_KEY")
+
+	if !exists {
+		reader := bufio.NewReader(os.Stdin)
+
+		fmt.Print("YAPPA_MASTER_KEY not set. Enter the password: ")
+		password, _, err := reader.ReadLine()
+
+		if err != nil {
+			log.Fatalf("Error reading from stdin: %v", err)
+		}
+
+		pass = string(password)
 	}
 
-	tlsConfig, err = getTlsConfig()
+	uri := fmt.Sprintf("postgres://%v:%v@%v/yappa-chat", user, pass, host)
 
+	pool, err := pgxpool.New(ctx, uri)
 	if err != nil {
-		return nil, err
+		log.Fatalf("Failed to create DB pool: %v", err)
 	}
 
-	router := http.NewServeMux()
+	err = pool.Ping(ctx)
+	if err != nil {
+		log.Fatalf("DB connection error: %v", err)
+	}
 
-	router.Handle("CONNECT /connect", http.HandlerFunc(handler.HandleConnection))
-
-	return &http3.Server{
-		Addr:      args.Addr,
-		Handler:   router,
-		TLSConfig: tlsConfig,
-	}, err
+	return pool
 }
 
 func getTlsConfig() (*tls.Config, error) {
-	cert, err := tls.LoadX509KeyPair(args.Cert, args.Key)
+	cert, err := tls.LoadX509KeyPair(settings.ChatSettings.Cert, settings.ChatSettings.Key)
 	if err != nil {
 		return nil, err
 	}
 
 	rootCAs := x509.NewCertPool()
-	caCertPath := args.CaCert
+	caCertPath := settings.ChatSettings.CaCert
 
 	caCertBytes, err := os.ReadFile(caCertPath)
 
@@ -87,4 +85,39 @@ func getTlsConfig() (*tls.Config, error) {
 		ClientAuth:   tls.VerifyClientCertIfGiven,
 		NextProtos:   []string{"h3"},
 	}, nil
+}
+
+func SetupServer(cfg *settings.Settings) (*http3.Server, error) {
+	settings.ChatSettings = cfg
+	err := settings.ChatSettings.Validate()
+
+	if err != nil {
+		return nil, err
+	}
+
+	db.Pool = setupDB(context.Background())
+
+	err = common.InitHttp3Client(settings.ChatSettings.CaCert)
+	if err != nil {
+		return nil, err
+	}
+
+	tlsConfig, err = getTlsConfig()
+
+	if err != nil {
+		return nil, err
+	}
+
+	router := http.NewServeMux()
+
+	router.Handle("CONNECT /connect", http.HandlerFunc(handler.Connection))
+	router.Handle("POST /register", http.HandlerFunc(handler.RegisterInit))
+
+	server := &http3.Server{
+		Addr:      settings.ChatSettings.Addr,
+		Handler:   router,
+		TLSConfig: tlsConfig,
+	}
+
+	return server, nil
 }

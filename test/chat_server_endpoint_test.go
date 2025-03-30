@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/as283-ua/yappa/internal/server"
+	"github.com/as283-ua/yappa/internal/server/settings"
 	"github.com/quic-go/quic-go/http3"
 )
 
@@ -22,7 +23,7 @@ func runChatServer() *http3.Server {
 	return server
 }
 
-var defaultArgs server.CmdArgs = server.CmdArgs{
+var defaultArgs settings.Settings = settings.Settings{
 	Addr:   "127.0.0.1:4435",
 	Cert:   "../certs/ca_server/ca_server.crt",
 	Key:    "../certs/ca_server/ca_server.key",

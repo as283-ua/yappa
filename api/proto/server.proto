@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package chat;
+
+option go_package = "github.com/as283-ua/yappa/api/gen";
+
+message RegistrationRequest {
+    string user = 1;
+}

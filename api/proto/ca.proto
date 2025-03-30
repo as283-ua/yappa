@@ -4,6 +4,11 @@ package ca;
 
 option go_package = "github.com/as283-ua/yappa/api/gen";
 
+message AllowUser {
+    string user = 1;
+    bytes token = 2;
+}
+
 message CertRequest {
     string user = 1;
     bytes token = 2;
@@ -12,9 +17,4 @@ message CertRequest {
 
 message CertResponse {
     bytes cert = 1;
-}
-
-message AllowUser {
-    string user = 1;
-    bytes token = 2;
 }
