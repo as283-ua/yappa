@@ -26,11 +26,11 @@ func TestCreateUserDb(t *testing.T) {
 	queries := db.New(pool)
 
 	username := "testuser"
-	// if err := queries.CreateUser(ctx, username); err != nil {
-	// 	t.Fatalf("Failed to create user: %v", err)
-	// }
+	if err := queries.CreateUser(ctx, db.CreateUserParams{Username: username, Certificate: "test"}); err != nil {
+		t.Fatalf("Failed to create user: %v", err)
+	}
 
-	// t.Log("User created successfully")
+	t.Log("User created successfully")
 
 	user, err := queries.GetUserByUsername(ctx, username)
 	if err != nil {
