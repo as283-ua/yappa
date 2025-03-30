@@ -44,3 +44,14 @@ func InitHttp3Client(caCertPath string) error {
 	}
 	return nil
 }
+
+func AddTlsCert(cert, key string) error {
+	tlsCert, err := tls.LoadX509KeyPair(cert, key)
+	if err != nil {
+		return err
+	}
+	tlsConfig := HttpClient.Transport.(*http3.Transport).TLSClientConfig
+	tlsConfig.Certificates = append(tlsConfig.Certificates, tlsCert)
+
+	return nil
+}

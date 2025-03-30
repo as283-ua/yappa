@@ -102,6 +102,8 @@ func SetupServer(cfg *settings.Settings) (*http3.Server, error) {
 		return nil, err
 	}
 
+	common.AddTlsCert(cfg.Cert, cfg.Key)
+
 	tlsConfig, err = getTlsConfig()
 
 	if err != nil {

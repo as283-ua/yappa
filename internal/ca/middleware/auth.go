@@ -1,19 +1,17 @@
 package middleware
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"log"
+	"math/big"
 	"net/http"
 )
 
-func IsChatServer(serverCertHash []byte, next http.Handler) http.Handler {
+func IsChatServer(serialNumber *big.Int, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		isServer := false
 
 		for _, cert := range req.TLS.PeerCertificates {
-			hash := sha256.Sum256(cert.Raw)
-			if bytes.Equal(serverCertHash, hash[:]) {
+			if serialNumber.Cmp(cert.SerialNumber) == 0 {
 				isServer = true
 				break
 			}

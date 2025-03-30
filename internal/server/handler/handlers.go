@@ -12,6 +12,7 @@ import (
 	"github.com/as283-ua/yappa/internal/server/db"
 	"github.com/as283-ua/yappa/internal/server/settings"
 	"github.com/as283-ua/yappa/pkg/common"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -67,8 +68,9 @@ func RegisterInit(w http.ResponseWriter, r *http.Request) {
 	queries := db.New(db.Pool)
 
 	_, err = queries.GetUserByUsername(r.Context(), request.User)
-	if err != nil {
-		http.Error(w, "Username is already taken", http.StatusBadRequest)
+	if err != nil && err != pgx.ErrNoRows {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		log.Println("Error unmarshalling registration request:", err)
 		return
 	}
 
@@ -92,7 +94,8 @@ func RegisterInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	caResp, err := common.HttpClient.Post(fmt.Sprintf("https://%v/allow", settings.ChatSettings.CaAddr), "application/x-protobuf", bytes.NewReader(caReq))
+	caAllowUrl := fmt.Sprintf("https://%v/allow", settings.ChatSettings.CaAddr)
+	caResp, err := common.HttpClient.Post(caAllowUrl, "application/x-protobuf", bytes.NewReader(caReq))
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		log.Println("Error requesting /allow user:", err)
@@ -104,7 +107,7 @@ func RegisterInit(w http.ResponseWriter, r *http.Request) {
 
 	if caResp.StatusCode != http.StatusOK {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		log.Println("Got error code from CA server:", err)
+		log.Println("Got error code from CA server:", caResp.StatusCode)
 		return
 	}
 

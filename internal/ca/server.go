@@ -1,12 +1,12 @@
 package ca
 
 import (
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"log"
+	"math/big"
 	"net/http"
 	"os"
 
@@ -71,7 +71,7 @@ func SetupServer(cmdArgs *CmdArgs) (*http3.Server, error) {
 
 	tlsConfig = getTlsConfig()
 
-	serverCertHash, err := getHashCert(args.ChatServerCert)
+	serverCertSerial, err := getCertSerialN(args.ChatServerCert)
 
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func SetupServer(cmdArgs *CmdArgs) (*http3.Server, error) {
 
 	router := http.NewServeMux()
 
-	router.Handle("POST /allow", middleware.IsChatServer(serverCertHash, http.HandlerFunc(handler.AllowUser)))
+	router.Handle("POST /allow", middleware.IsChatServer(serverCertSerial, http.HandlerFunc(handler.AllowUser)))
 	router.Handle("POST /sign", http.HandlerFunc(handler.SignCert(caCert, caKey)))
 	router.Handle("GET /certificates", http.HandlerFunc(handler.Getcertificates))
 	router.Handle("POST /revoke/{username}", http.HandlerFunc(handler.Revoke))
@@ -122,7 +122,7 @@ func getTlsConfig() *tls.Config {
 	}
 }
 
-func getHashCert(serverCert string) ([]byte, error) {
+func getCertSerialN(serverCert string) (*big.Int, error) {
 	content, err := os.ReadFile(serverCert)
 	if err != nil {
 		return nil, err
@@ -131,13 +131,7 @@ func getHashCert(serverCert string) ([]byte, error) {
 	block, _ := pem.Decode(content)
 	cert, err := x509.ParseCertificate(block.Bytes)
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	hash := sha256.Sum256(cert.Raw)
-
-	return hash[:], nil
+	return cert.SerialNumber, nil
 }
 
 func loadCA() error {
