@@ -114,6 +114,7 @@ func SetupServer(cfg *settings.Settings) (*http3.Server, error) {
 
 	router.Handle("CONNECT /connect", http.HandlerFunc(handler.Connection))
 	router.Handle("POST /register", http.HandlerFunc(handler.RegisterInit))
+	router.Handle("POST /register/confirm", http.HandlerFunc(handler.RegisterComplete))
 
 	server := &http3.Server{
 		Addr:      settings.ChatSettings.Addr,

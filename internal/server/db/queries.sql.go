@@ -7,17 +7,20 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (username) 
-VALUES ($1)
+INSERT INTO users (username, certificate) 
+VALUES ($1, $2)
 `
 
-func (q *Queries) CreateUser(ctx context.Context, username string) error {
-	_, err := q.db.Exec(ctx, createUser, username)
+type CreateUserParams struct {
+	Username    string
+	Certificate string
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
+	_, err := q.db.Exec(ctx, createUser, arg.Username, arg.Certificate)
 	return err
 }
 
@@ -42,7 +45,7 @@ WHERE username = $1
 
 type UpdateUserCertParams struct {
 	Username    string
-	Certificate pgtype.Text
+	Certificate string
 }
 
 func (q *Queries) UpdateUserCert(ctx context.Context, arg UpdateUserCertParams) error {

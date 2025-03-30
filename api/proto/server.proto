@@ -7,3 +7,14 @@ option go_package = "github.com/as283-ua/yappa/api/gen";
 message RegistrationRequest {
     string user = 1;
 }
+
+message ConfirmRegistrationToken {
+    string user = 1;
+    bytes token = 2;
+}
+
+message ConfirmRegistration {
+    string user = 1;
+    bytes token = 2;
+    bytes cert  = 3;
+}

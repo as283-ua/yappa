@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"github.com/as283-ua/yappa/internal/ca/handler"
-	"github.com/as283-ua/yappa/internal/ca/middleware"
+	"github.com/as283-ua/yappa/internal/middleware"
 	"github.com/quic-go/quic-go/http3"
 )
 
@@ -79,7 +79,7 @@ func SetupServer(cmdArgs *CmdArgs) (*http3.Server, error) {
 
 	router := http.NewServeMux()
 
-	router.Handle("POST /allow", middleware.IsChatServer(serverCertSerial, http.HandlerFunc(handler.AllowUser)))
+	router.Handle("POST /allow", middleware.MatchCertSerialNumber(serverCertSerial, http.HandlerFunc(handler.AllowUser)))
 	router.Handle("POST /sign", http.HandlerFunc(handler.SignCert(caCert, caKey)))
 	router.Handle("GET /certificates", http.HandlerFunc(handler.Getcertificates))
 	router.Handle("POST /revoke/{username}", http.HandlerFunc(handler.Revoke))
@@ -130,6 +130,10 @@ func getCertSerialN(serverCert string) (*big.Int, error) {
 
 	block, _ := pem.Decode(content)
 	cert, err := x509.ParseCertificate(block.Bytes)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return cert.SerialNumber, nil
 }

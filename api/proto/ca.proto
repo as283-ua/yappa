@@ -16,5 +16,6 @@ message CertRequest {
 }
 
 message CertResponse {
-    bytes cert = 1;
+    bytes cert  = 1;
+    bytes token = 2;
 }

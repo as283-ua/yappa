@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func IsChatServer(serialNumber *big.Int, next http.Handler) http.Handler {
+func MatchCertSerialNumber(serialNumber *big.Int, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		isServer := false
 

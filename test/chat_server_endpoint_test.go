@@ -96,9 +96,25 @@ func TestRegister(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	bytesResp, _ := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
 
 	certResponse := &gen.CertResponse{}
 	proto.Unmarshal(bytesResp, certResponse)
 
 	t.Log(string(certResponse.Cert))
+
+	confirmation := &gen.ConfirmRegistration{
+		User:  regRequest.User,
+		Token: certResponse.Token,
+		Cert:  certResponse.Cert,
+	}
+
+	data, _ = proto.Marshal(confirmation)
+
+	resp, err = client.Post("https://"+DefaultChatServerArgs.Addr+"/register/confirm", "application/x-protobuf", bytes.NewReader(data))
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	defer resp.Body.Close()
 }

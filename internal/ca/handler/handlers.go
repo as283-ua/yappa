@@ -17,7 +17,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var allowedUsers map[string][]byte = make(map[string][]byte)
+type RegTokens struct {
+	certificationToken []byte
+	confirmationToken  []byte
+}
+
+var allowedUsers map[string]RegTokens = make(map[string]RegTokens)
 var mu sync.Mutex
 
 func validateAllow(allow *gen.AllowUser) error {
@@ -49,11 +54,27 @@ func AllowUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	token := make([]byte, 64)
+	rand.Read(token)
+
+	confirm := &gen.ConfirmRegistrationToken{
+		User:  allowUser.User,
+		Token: token,
+	}
+
+	confirmBytes, err := proto.Marshal(confirm)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		log.Println("Proto marshal error: " + err.Error())
+		return
+	}
+
 	mu.Lock()
-	allowedUsers[allowUser.User] = allowUser.Token
+	allowedUsers[allowUser.User] = RegTokens{certificationToken: allowUser.Token, confirmationToken: token}
 	mu.Unlock()
 
 	w.WriteHeader(http.StatusOK)
+	w.Write(confirmBytes)
 
 	log.Println("Allowed user " + allowUser.User)
 }
@@ -75,7 +96,7 @@ func SignCert(caCert *x509.Certificate, caKey any) func(w http.ResponseWriter, r
 		token, ok := allowedUsers[certRequest.User]
 		mu.Unlock()
 
-		if !ok || !bytes.Equal(token, certRequest.Token) {
+		if !ok || !bytes.Equal(token.certificationToken, certRequest.Token) {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -125,7 +146,8 @@ func SignCert(caCert *x509.Certificate, caKey any) func(w http.ResponseWriter, r
 		w.Header().Add("Content-Type", "application/x-protobuf")
 
 		cert := &gen.CertResponse{
-			Cert: signedCertPEM,
+			Cert:  signedCertPEM,
+			Token: token.confirmationToken,
 		}
 
 		bytes, err := proto.Marshal(cert)

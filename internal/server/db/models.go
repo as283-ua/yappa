@@ -4,12 +4,8 @@
 
 package db
 
-import (
-	"github.com/jackc/pgx/v5/pgtype"
-)
-
 type User struct {
 	ID          int32
 	Username    string
-	Certificate pgtype.Text
+	Certificate string
 }
