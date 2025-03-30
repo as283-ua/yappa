@@ -95,7 +95,10 @@ func SetupServer(cfg *settings.Settings) (*http3.Server, error) {
 		return nil, err
 	}
 
-	db.Pool = setupDB(context.Background())
+	// for testing purposes
+	if db.Pool == nil {
+		db.Pool = setupDB(context.Background())
+	}
 
 	err = common.InitHttp3Client(settings.ChatSettings.CaCert)
 	if err != nil {

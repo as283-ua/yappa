@@ -76,6 +76,11 @@ func RegisterInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err == nil {
+		http.Error(w, "Username already taken", http.StatusBadRequest)
+		return
+	}
+
 	oneTimeToken := make([]byte, 64)
 	_, err = rand.Read(oneTimeToken)
 	if err != nil {
