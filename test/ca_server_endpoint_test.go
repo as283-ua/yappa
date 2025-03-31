@@ -42,7 +42,7 @@ var DefaultCaArgs = &ca.CmdArgs{
 }
 
 func TestAllowNoCert(t *testing.T) {
-	RunCaServer()
+	setup()
 
 	client := GetHttp3Client("../certs", "", "../certs/ca/ca.crt")
 
@@ -65,7 +65,7 @@ func TestAllowNoCert(t *testing.T) {
 }
 
 func TestAllowServerCert(t *testing.T) {
-	RunCaServer()
+	setup()
 	client := GetHttp3Client("../certs", "server", "../certs/ca/ca.crt")
 
 	token := make([]byte, 64)
@@ -88,7 +88,7 @@ func TestAllowServerCert(t *testing.T) {
 }
 
 func TestAllowTestCert(t *testing.T) {
-	RunCaServer()
+	setup()
 
 	client := GetHttp3Client("../certs", "test", "../certs/ca/ca.crt")
 	token := make([]byte, 64)
@@ -119,7 +119,7 @@ func TestAllowTestCert(t *testing.T) {
 }
 
 func TestAllowAndSignCert(t *testing.T) {
-	RunCaServer()
+	setup()
 
 	clientServe := GetHttp3Client("../certs", "server", "../certs/ca/ca.crt")
 	token := make([]byte, 64)

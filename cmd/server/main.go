@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -27,7 +28,7 @@ func main() {
 		Key:    *key,
 		CaCert: *caCert,
 		CaAddr: *caAddr,
-	})
+	}, server.SetupPgxDb(context.Background()))
 
 	if err != nil {
 		log.Fatal(err)

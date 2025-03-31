@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -11,14 +12,53 @@ import (
 
 	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/server"
+	"github.com/as283-ua/yappa/internal/server/db"
 	"github.com/as283-ua/yappa/internal/server/settings"
+	"github.com/jackc/pgx/v5"
 	"github.com/quic-go/quic-go/http3"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 )
 
+type MockUserRepo struct {
+	users  map[string]db.User
+	serial int
+}
+
+func (r MockUserRepo) GetUserByUsername(ctx context.Context, user string) (db.User, error) {
+	u, ok := r.users[user]
+	if !ok {
+		return u, pgx.ErrNoRows
+	}
+	return u, nil
+}
+
+func (r *MockUserRepo) CreateUser(ctx context.Context, user, cert string) error {
+	_, err := r.GetUserByUsername(ctx, user)
+	if err == nil {
+		return fmt.Errorf("User already exists")
+	}
+	r.users[user] = db.User{ID: int32(r.serial), Username: user, Certificate: cert}
+	r.serial++
+	return nil
+}
+
+var caServer, chatServer *http3.Server
+
+func setup() {
+	os.Setenv("YAPPA_MASTER_KEY", "pass")
+
+	if caServer == nil {
+		caServer = RunCaServer()
+	}
+
+	if chatServer == nil {
+		chatServer = RunChatServer()
+	}
+}
+
 func RunChatServer() *http3.Server {
-	server, err := server.SetupServer(&DefaultChatServerArgs)
+	server, err := server.SetupServer(&DefaultChatServerArgs, &MockUserRepo{users: make(map[string]db.User), serial: 0})
 
 	if err != nil {
 		log.Fatal("Error booting server: ", err)
@@ -42,10 +82,7 @@ var DefaultChatServerArgs settings.Settings = settings.Settings{
 }
 
 func TestRegister(t *testing.T) {
-	os.Setenv("YAPPA_MASTER_KEY", "pass")
-
-	RunCaServer()
-	RunChatServer()
+	setup()
 
 	client := GetHttp3Client("../certs", "", DefaultChatServerArgs.CaCert)
 

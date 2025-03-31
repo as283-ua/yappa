@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/as283-ua/yappa/internal/server/db"
-	"github.com/as283-ua/yappa/internal/server/handler"
+	"github.com/as283-ua/yappa/internal/server/auth"
+	"github.com/as283-ua/yappa/internal/server/connection"
 	"github.com/as283-ua/yappa/internal/server/settings"
 	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,7 +29,7 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func setupDB(ctx context.Context) *pgxpool.Pool {
+func SetupPgxDb(ctx context.Context) *auth.PgxUserRepo {
 	user := getEnv("YAPPA_DB_USER", "yappa")
 	host := getEnv("YAPPA_DB_HOST", "localhost:5432")
 	pass, exists := os.LookupEnv("YAPPA_MASTER_KEY")
@@ -59,7 +59,7 @@ func setupDB(ctx context.Context) *pgxpool.Pool {
 		log.Fatalf("DB connection error: %v", err)
 	}
 
-	return pool
+	return &auth.PgxUserRepo{Pool: pool}
 }
 
 func getTlsConfig() (*tls.Config, error) {
@@ -87,7 +87,7 @@ func getTlsConfig() (*tls.Config, error) {
 	}, nil
 }
 
-func SetupServer(cfg *settings.Settings) (*http3.Server, error) {
+func SetupServer(cfg *settings.Settings, userRepo auth.UserRepo) (*http3.Server, error) {
 	settings.ChatSettings = cfg
 	err := settings.ChatSettings.Validate()
 
@@ -95,10 +95,7 @@ func SetupServer(cfg *settings.Settings) (*http3.Server, error) {
 		return nil, err
 	}
 
-	// for testing purposes
-	if db.Pool == nil {
-		db.Pool = setupDB(context.Background())
-	}
+	auth.Repo = userRepo
 
 	err = common.InitHttp3Client(settings.ChatSettings.CaCert)
 	if err != nil {
@@ -115,9 +112,9 @@ func SetupServer(cfg *settings.Settings) (*http3.Server, error) {
 
 	router := http.NewServeMux()
 
-	router.Handle("CONNECT /connect", http.HandlerFunc(handler.Connection))
-	router.Handle("POST /register", http.HandlerFunc(handler.RegisterInit))
-	router.Handle("POST /register/confirm", http.HandlerFunc(handler.RegisterComplete))
+	router.Handle("CONNECT /connect", http.HandlerFunc(connection.Connection))
+	router.Handle("POST /register", http.HandlerFunc(auth.RegisterInit))
+	router.Handle("POST /register/confirm", http.HandlerFunc(auth.RegisterComplete))
 
 	server := &http3.Server{
 		Addr:      settings.ChatSettings.Addr,
