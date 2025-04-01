@@ -1,4 +1,4 @@
-package page
+package ui
 
 import (
 	"fmt"
@@ -19,4 +19,14 @@ func (c Exit) Select() (tea.Model, tea.Cmd) {
 
 func (c Exit) String() string {
 	return "Exit"
+}
+
+type Register struct{}
+
+func (c Register) Select() (tea.Model, tea.Cmd) {
+	return nil, nil
+}
+
+func (c Register) String() string {
+	return "Register!"
 }

@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/as283-ua/yappa/internal/ca/handler"
+	"github.com/as283-ua/yappa/internal/ca/signature"
 	"github.com/as283-ua/yappa/internal/middleware"
 	"github.com/quic-go/quic-go/http3"
 )
@@ -79,11 +79,11 @@ func SetupServer(cmdArgs *CmdArgs) (*http3.Server, error) {
 
 	router := http.NewServeMux()
 
-	router.Handle("POST /allow", middleware.MatchCertSerialNumber(serverCertSerial, http.HandlerFunc(handler.AllowUser)))
-	router.Handle("POST /sign", http.HandlerFunc(handler.SignCert(caCert, caKey)))
-	router.Handle("GET /certificates", http.HandlerFunc(handler.Getcertificates))
-	router.Handle("POST /revoke/{username}", http.HandlerFunc(handler.Revoke))
-	router.Handle("POST /reinstate/{username}", http.HandlerFunc(handler.Reinstate))
+	router.Handle("POST /allow", middleware.MatchCertSerialNumber(serverCertSerial, http.HandlerFunc(signature.AllowUser)))
+	router.Handle("POST /sign", http.HandlerFunc(signature.SignCert(caCert, caKey)))
+	router.Handle("GET /certificates", http.HandlerFunc(signature.Getcertificates))
+	router.Handle("POST /revoke/{username}", http.HandlerFunc(signature.Revoke))
+	router.Handle("POST /reinstate/{username}", http.HandlerFunc(signature.Reinstate))
 
 	return &http3.Server{
 		Addr:      args.Addr,
