@@ -72,8 +72,17 @@ var QUIT = Input{
 	},
 }
 
+// same as quit but without q to allow typing in textboxes
+var QUITTYPABLE = Input{
+	Keys:        []string{"ctrl+c"},
+	Description: "Quit",
+	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
+		return nil, tea.Quit
+	},
+}
+
 var SELECT = Input{
-	Keys:        []string{"enter", "right"},
+	Keys:        []string{"enter"},
 	Description: "Select",
 	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
 		optioner, ok := m.(Optioner)

@@ -21,12 +21,12 @@ func (c Exit) String() string {
 	return "Exit"
 }
 
-type Register struct{}
+type GoToRegister struct{}
 
-func (c Register) Select() (tea.Model, tea.Cmd) {
-	return nil, nil
+func (c GoToRegister) Select() (tea.Model, tea.Cmd) {
+	return NewRegisterPage(), nil
 }
 
-func (c Register) String() string {
+func (c GoToRegister) String() string {
 	return "Register!"
 }

@@ -1,4 +1,4 @@
-package page
+package ui
 
 import (
 	"errors"
@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/as283-ua/yappa/internal/client/settings"
-	"github.com/as283-ua/yappa/internal/client/ui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -17,16 +16,16 @@ type MainPage struct {
 	titleScreen string
 	cursor      int
 
-	options []ui.Option
+	options []Option
 	show    bool
-	inputs  ui.Inputs
+	inputs  Inputs
 }
 
-func (m MainPage) GetOptions() []ui.Option {
+func (m MainPage) GetOptions() []Option {
 	return m.options
 }
 
-func (m MainPage) GetSelected() ui.Option {
+func (m MainPage) GetSelected() Option {
 	return m.options[m.cursor]
 }
 
@@ -44,17 +43,17 @@ func (m *MainPage) Down() {
 	}
 }
 
-func (m MainPage) GetInputs() ui.Inputs {
+func (m MainPage) GetInputs() Inputs {
 	return m.inputs
 }
 
-func (m MainPage) ToggleShow() ui.Inputer {
+func (m MainPage) ToggleShow() Inputer {
 	m.show = !m.show
 	return m
 }
 
 func NewMainPage() MainPage {
-	titleScreen := ui.Titles[rand.Int()%len(ui.Titles)]
+	titleScreen := Titles[rand.Int()%len(Titles)]
 	lines := strings.Count(titleScreen, "\n") + 1
 	totalLines := 15
 
@@ -66,24 +65,24 @@ func NewMainPage() MainPage {
 		titleScreen += "\n"
 	}
 
-	options := make([]ui.Option, 0, 2)
+	options := make([]Option, 0, 2)
 
 	if !hasCert() {
-		options = append(options, ui.Register{})
+		options = append(options, GoToRegister{})
 	}
 
-	options = append(options, ui.Exit{})
+	options = append(options, Exit{})
 
-	inputs := ui.Inputs{
-		Inputs: make(map[string]ui.Input),
+	inputs := Inputs{
+		Inputs: make(map[string]Input),
 		Order:  make([]string, 0),
 	}
 
-	inputs.Add(ui.DOWN)
-	inputs.Add(ui.UP)
-	inputs.Add(ui.QUIT)
-	inputs.Add(ui.SELECT)
-	inputs.Add(ui.HELP)
+	inputs.Add(DOWN)
+	inputs.Add(UP)
+	inputs.Add(QUIT)
+	inputs.Add(SELECT)
+	inputs.Add(HELP)
 
 	return MainPage{
 		options:     options,
@@ -125,7 +124,7 @@ func (m MainPage) View() string {
 
 	for i, option := range m.options {
 		if i == m.cursor {
-			s += ui.WhiteForeground.Render("> ", option.String())
+			s += WhiteForeground.Render("> ", option.String())
 		} else {
 			s += "  " + option.String()
 		}
@@ -137,7 +136,7 @@ func (m MainPage) View() string {
 	if m.show {
 		for _, v := range m.inputs.Order {
 			in := m.inputs.Inputs[v]
-			keys := ui.Bold.Render("[" + strings.Join(in.Keys, ", ") + "]")
+			keys := Bold.Render("[" + strings.Join(in.Keys, ", ") + "]")
 			s += fmt.Sprintf("%v - %v   ", keys, in.Description)
 		}
 	}
