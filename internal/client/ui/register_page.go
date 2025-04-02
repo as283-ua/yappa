@@ -15,15 +15,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type Register struct {
+type RegisterOpt struct {
 	username string
 }
 
-func (r Register) String() string {
+func (r RegisterOpt) String() string {
 	return "Register"
 }
 
-func (r Register) Select() (tea.Model, tea.Cmd) {
+func (r RegisterOpt) Select() (tea.Model, tea.Cmd) {
 	return nil, register(r.username)
 }
 
@@ -48,10 +48,14 @@ func register(username string) tea.Cmd {
 	}
 }
 
+type RegistrationSuccess struct {
+	Username string
+}
+
 type RegisterPage struct {
 	username textinput.Model
 
-	registerBtn *Register
+	registerBtn *RegisterOpt
 	options     []Option
 	show        bool
 	inputs      Inputs
@@ -87,7 +91,7 @@ func (m RegisterPage) ToggleShow() Inputer {
 func NewRegisterPage() RegisterPage {
 	options := make([]Option, 0, 2)
 
-	registerBtn := &Register{username: ""}
+	registerBtn := &RegisterOpt{username: ""}
 
 	options = append(options, registerBtn)
 
@@ -148,8 +152,13 @@ func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// certificate shenanigans
 	case *gen.AllowUser:
-		cmd = tea.Batch(cmd, proceedWithRegistration(msg))
+		cmd = tea.Batch(cmd, createAndSignCertificate(msg))
 	case *gen.CertResponse:
+		cmd = tea.Batch(cmd, completeRegistration(m.registerBtn.username, msg))
+	case RegistrationSuccess:
+		service.UseCertificate(
+			settings.CliSettings.CertDir+"yappa.key",
+			settings.CliSettings.CertDir+"yappa.crt")
 		m.errorMessage = "Good job, you registered!"
 	}
 
@@ -183,14 +192,14 @@ func (m RegisterPage) View() string {
 	return s
 }
 
-func proceedWithRegistration(allowUser *gen.AllowUser) tea.Cmd {
+func createAndSignCertificate(allowUser *gen.AllowUser) tea.Cmd {
 	return func() tea.Msg {
 		key, err := service.GeneratePrivKey()
 		if err != nil {
 			return err
 		}
 
-		err = saveKeyFile(allowUser.User, key.Pem)
+		err = savePemFile(key.Pem, "yappa.key")
 		if err != nil {
 			return err
 		}
@@ -214,20 +223,42 @@ func proceedWithRegistration(allowUser *gen.AllowUser) tea.Cmd {
 	}
 }
 
-func saveKeyFile(username string, privPem []byte) error {
-	pem, err := os.OpenFile(settings.CliSettings.CertDir+username+".key", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+func completeRegistration(username string, certResponse *gen.CertResponse) tea.Cmd {
+	return func() tea.Msg {
+		err := savePemFile(certResponse.Cert, "yappa.crt")
+		if err != nil {
+			return err
+		}
+
+		c, err := service.GetHttp3Client()
+		if err != nil {
+			return err
+		}
+
+		yc := service.RegistrationClient{Client: c}
+		err = yc.CompleteRegistration(username, certResponse)
+		if err != nil {
+			return err
+		}
+
+		return RegistrationSuccess{}
+	}
+}
+
+func savePemFile(pemBytes []byte, file string) error {
+	pem, err := os.OpenFile(settings.CliSettings.CertDir+file, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		log.Println("Pem create error: ", err)
-		return errors.New("could not save private key")
+		return errors.New("could not save certificate")
 	}
 	defer pem.Close()
-	_, err = pem.Write(privPem)
+
+	_, err = pem.Write(pemBytes)
 	if err != nil {
 		log.Println("Pem write error: ", err)
-		os.Remove(settings.CliSettings.CertDir + username + ".key")
-		return errors.New("could not save private key")
+		os.Remove(settings.CliSettings.CertDir + file)
+		return errors.New("could not save certificate")
 	}
-	pem.Chmod(0400)
 
 	return nil
 }

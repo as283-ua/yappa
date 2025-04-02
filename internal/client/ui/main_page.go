@@ -146,7 +146,7 @@ func (m MainPage) View() string {
 }
 
 func hasCert() bool {
-	_, err := os.Stat(settings.CliSettings.CertDir + "cert.crt")
+	_, err := os.Stat(settings.CliSettings.CertDir + "yappa.crt")
 	if err == nil {
 		return true
 	}
