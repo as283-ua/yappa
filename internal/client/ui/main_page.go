@@ -128,7 +128,7 @@ func (m MainPage) View() string {
 		} else {
 			s += "  " + option.String()
 		}
-		s += "\n"
+		s += "\n\n"
 	}
 
 	s += "\n\n"

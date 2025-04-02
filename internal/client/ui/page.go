@@ -65,15 +65,6 @@ var UP = Input{
 }
 
 var QUIT = Input{
-	Keys:        []string{"q", "ctrl+c"},
-	Description: "Quit",
-	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
-		return nil, tea.Quit
-	},
-}
-
-// same as quit but without q to allow typing in textboxes
-var QUITTYPABLE = Input{
 	Keys:        []string{"ctrl+c"},
 	Description: "Quit",
 	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
@@ -94,7 +85,7 @@ var SELECT = Input{
 }
 
 var HELP = Input{
-	Keys:        []string{"h"},
+	Keys:        []string{"ctrl+h"},
 	Description: "Display controls",
 	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
 		inputer, ok := m.(Inputer)

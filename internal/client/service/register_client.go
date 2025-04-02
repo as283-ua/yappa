@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/client/settings"
@@ -27,7 +28,12 @@ func (c RegistrationClient) RequestRegistration(username string) (*gen.AllowUser
 	}
 
 	url := fmt.Sprintf("https://%v/register", settings.CliSettings.ServerHost)
+
+	// origStdout := os.Stdout
+	nullFile, _ := os.Open(os.DevNull)
+	os.Stdout = nullFile
 	resp, err := c.Client.Post(url, "application/x-protobuf", bytes.NewReader(data))
+	// os.Stdout = origStdout
 
 	if err != nil {
 		return nil, err

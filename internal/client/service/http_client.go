@@ -14,7 +14,7 @@ import (
 var httpClient *http.Client
 
 func GetHttp3Client() (*http.Client, error) {
-	if httpClient != nil {
+	if httpClient == nil {
 		return nil, fmt.Errorf("no http client set up")
 	}
 

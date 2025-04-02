@@ -22,3 +22,5 @@ func TimedCmd(duration time.Duration, msg tea.Msg) tea.Cmd {
 		return msg
 	})
 }
+
+type ClearErrorMsg struct{}

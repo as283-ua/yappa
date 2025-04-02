@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -24,10 +25,14 @@ func (r Register) Select() (tea.Model, tea.Cmd) {
 func register(username string) tea.Cmd {
 	return func() tea.Msg {
 		if len(username) < 4 {
-			return fmt.Errorf("username must be at least 4 characters long")
+			return fmt.Errorf("username must be at least 4 characters long: %v", username)
 		}
 
-		c, _ := service.GetHttp3Client()
+		c, err := service.GetHttp3Client()
+		if err != nil {
+			return err
+		}
+
 		yc := service.RegistrationClient{Client: c}
 		allowUser, err := yc.RequestRegistration(username)
 
@@ -41,9 +46,12 @@ func register(username string) tea.Cmd {
 type RegisterPage struct {
 	username textinput.Model
 
-	options []Option
-	show    bool
-	inputs  Inputs
+	registerBtn *Register
+	options     []Option
+	show        bool
+	inputs      Inputs
+
+	errorMessage string
 }
 
 func (m RegisterPage) GetOptions() []Option {
@@ -74,7 +82,9 @@ func (m RegisterPage) ToggleShow() Inputer {
 func NewRegisterPage() RegisterPage {
 	options := make([]Option, 0, 2)
 
-	options = append(options, Register{})
+	registerBtn := &Register{username: ""}
+
+	options = append(options, registerBtn)
 
 	options = append(options, Exit{})
 
@@ -83,7 +93,7 @@ func NewRegisterPage() RegisterPage {
 		Order:  make([]string, 0),
 	}
 
-	inputs.Add(QUITTYPABLE)
+	inputs.Add(QUIT)
 	inputs.Add(SELECT)
 	inputs.Add(HELP)
 
@@ -92,8 +102,9 @@ func NewRegisterPage() RegisterPage {
 	username.Focus()
 
 	return RegisterPage{
-		options: options,
-		inputs:  inputs,
+		registerBtn: registerBtn,
+		options:     options,
+		inputs:      inputs,
 
 		username: username,
 	}
@@ -105,8 +116,10 @@ func (m RegisterPage) Init() tea.Cmd {
 
 func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd = nil
+	var model tea.Model = nil
+
 	m.username, cmd = m.username.Update(msg)
-	var model tea.Model = m
+	m.registerBtn.username = m.username.Value()
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -121,17 +134,31 @@ func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = tea.Batch(cmd, cmdTemp)
 			}
 		}
+	case error:
+		m.errorMessage = msg.Error()
+
+		cmd = tea.Batch(cmd, TimedCmd(5*time.Second, ClearErrorMsg{}))
+	case ClearErrorMsg:
+		m.errorMessage = ""
+	}
+
+	if model == nil {
+		model = m
 	}
 
 	return model, cmd
 }
 
 func (m RegisterPage) View() string {
-	s := ""
+	s := "\n\n" + m.username.View() + "\n\n"
 
-	s += m.username.View() + "\n"
+	s += WhiteForeground.Render(m.options[0].String())
 
-	s += WhiteForeground.Render("> ", m.options[0].String())
+	if m.errorMessage != "" {
+		s += Warning.Render("\n\nError: ") + m.errorMessage
+	}
+
+	s += "\n\n"
 
 	if m.show {
 		for _, v := range m.inputs.Order {
