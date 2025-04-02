@@ -22,11 +22,11 @@ var (
 )
 
 func main() {
-	certDir = flag.String("certs", "certs/client", "Path to certs directory")
+	certDir = flag.String("certs", "certs/client/", "Path to certs directory")
 	caCert = flag.String("cacert", "certs/ca/ca.crt", "Yappa CA certificate")
 	serverHost = flag.String("server", "yappa.io:4433", "Yappa chat server ip and port")
 	caHost = flag.String("ca", "yappa.io:4434", "Yappa CA server ip and port")
-	logsDir = flag.String("logs", "logs/", "Error logs directory. \"/dev/null\" or \"null\" to suppress error logs")
+	logsDir = flag.String("logs", "logs/", "Error logs directory.\n\"/dev/null\" or \"null\" to suppress error logs.\n\"-\" to show errors on-screen (buggy)")
 
 	flag.Parse()
 
@@ -37,10 +37,10 @@ func main() {
 		CaHost:     *caHost,
 	}
 
-	var logFile *os.File
+	var logFile *os.File = nil
 	if *logsDir == "/dev/null" || *logsDir == "null" {
 		logFile, _ = os.Open(os.DevNull)
-	} else {
+	} else if *logsDir != "-" {
 		filename := time.Now().Format("2006-01-02_15-04-05") + "-yappa-err.log"
 
 		_, err := os.Stat(*logsDir)
@@ -55,7 +55,9 @@ func main() {
 		defer logFile.Close()
 	}
 
-	log.SetOutput(logFile)
+	if logFile != nil {
+		log.SetOutput(logFile)
+	}
 
 	service.InitHttp3Client(*caCert)
 

@@ -1,11 +1,16 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/client/service"
+	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -140,6 +145,12 @@ func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = tea.Batch(cmd, TimedCmd(5*time.Second, ClearErrorMsg{}))
 	case ClearErrorMsg:
 		m.errorMessage = ""
+
+	// certificate shenanigans
+	case *gen.AllowUser:
+		cmd = tea.Batch(cmd, proceedWithRegistration(msg))
+	case *gen.CertResponse:
+		m.errorMessage = "Good job, you registered!"
 	}
 
 	if model == nil {
@@ -170,4 +181,53 @@ func (m RegisterPage) View() string {
 
 	s += "\n\n"
 	return s
+}
+
+func proceedWithRegistration(allowUser *gen.AllowUser) tea.Cmd {
+	return func() tea.Msg {
+		key, err := service.GeneratePrivKey()
+		if err != nil {
+			return err
+		}
+
+		err = saveKeyFile(allowUser.User, key.Pem)
+		if err != nil {
+			return err
+		}
+
+		csrPem, err := service.GenerateCSR(key.Key, allowUser.User)
+		if err != nil {
+			return err
+		}
+
+		c, err := service.GetHttp3Client()
+		if err != nil {
+			return err
+		}
+
+		yc := service.RegistrationClient{Client: c}
+		certResponse, err := yc.CertificateSignatureRequest(allowUser, csrPem)
+		if err != nil {
+			return err
+		}
+		return certResponse
+	}
+}
+
+func saveKeyFile(username string, privPem []byte) error {
+	pem, err := os.OpenFile(settings.CliSettings.CertDir+username+".key", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		log.Println("Pem create error: ", err)
+		return errors.New("could not save private key")
+	}
+	defer pem.Close()
+	_, err = pem.Write(privPem)
+	if err != nil {
+		log.Println("Pem write error: ", err)
+		os.Remove(settings.CliSettings.CertDir + username + ".key")
+		return errors.New("could not save private key")
+	}
+	pem.Chmod(0400)
+
+	return nil
 }
