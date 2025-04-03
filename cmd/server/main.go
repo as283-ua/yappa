@@ -22,7 +22,7 @@ func main() {
 
 	flag.Parse()
 
-	server, err := server.SetupServer(&settings.Settings{
+	server, err := server.SetupServer(&settings.ChatCfg{
 		Addr:   *addr,
 		Cert:   *cert,
 		Key:    *key,

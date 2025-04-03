@@ -121,6 +121,11 @@ func SignCert(caCert *x509.Certificate, caKey any) func(w http.ResponseWriter, r
 			return
 		}
 
+		if csr.Subject.CommonName != certRequest.User {
+			http.Error(w, "Invalid CSR common name", http.StatusBadRequest)
+			return
+		}
+
 		template := &x509.Certificate{
 			SerialNumber:          big.NewInt(time.Now().UnixNano()),
 			Subject:               csr.Subject,
@@ -169,16 +174,16 @@ func SignCert(caCert *x509.Certificate, caKey any) func(w http.ResponseWriter, r
 }
 
 func Getcertificates(w http.ResponseWriter, req *http.Request) {
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte("Work in progress"))
 }
 
 func Revoke(w http.ResponseWriter, req *http.Request) {
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte("Work in progress"))
 }
 
 func Reinstate(w http.ResponseWriter, req *http.Request) {
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte("Work in progress"))
 }

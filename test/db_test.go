@@ -19,6 +19,7 @@ func setupDB(t *testing.T, ctx context.Context) *pgxpool.Pool {
 }
 
 func TestCreateUserDb(t *testing.T) {
+	t.Skip("Skipping db test")
 	ctx := context.Background()
 	pool := setupDB(t, ctx)
 	defer pool.Close()

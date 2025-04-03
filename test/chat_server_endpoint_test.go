@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/server"
 	"github.com/as283-ua/yappa/internal/server/db"
 	"github.com/as283-ua/yappa/internal/server/settings"
@@ -73,7 +74,7 @@ func RunChatServer() *http3.Server {
 	return server
 }
 
-var DefaultChatServerArgs settings.Settings = settings.Settings{
+var DefaultChatServerArgs settings.ChatCfg = settings.ChatCfg{
 	Addr:   "127.0.0.1:4435",
 	Cert:   "../certs/server/server.crt",
 	Key:    "../certs/server/server.key",
@@ -86,8 +87,10 @@ func TestRegister(t *testing.T) {
 
 	client := GetHttp3Client("../certs", "", DefaultChatServerArgs.CaCert)
 
+	username := "User1"
+
 	regRequest := &gen.RegistrationRequest{
-		User: "User1",
+		User: username,
 	}
 
 	data, err := proto.Marshal(regRequest)
@@ -112,7 +115,10 @@ func TestRegister(t *testing.T) {
 
 	assert.Equal(t, regRequest.User, allowUser.User)
 
-	csr, err := os.ReadFile("../certs/test.csr")
+	certBundle, err := service.GeneratePrivKey()
+	assert.NoError(t, err)
+
+	csr, err := service.GenerateCSR(certBundle.Key, username)
 
 	if err != nil {
 		t.Error(err)

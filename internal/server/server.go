@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -9,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"syscall"
 
 	"github.com/as283-ua/yappa/internal/server/auth"
 	"github.com/as283-ua/yappa/internal/server/connection"
@@ -16,6 +16,7 @@ import (
 	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/quic-go/quic-go/http3"
+	"golang.org/x/term"
 )
 
 var (
@@ -35,11 +36,8 @@ func SetupPgxDb(ctx context.Context) *auth.PgxUserRepo {
 	pass, exists := os.LookupEnv("YAPPA_MASTER_KEY")
 
 	if !exists {
-		reader := bufio.NewReader(os.Stdin)
-
 		fmt.Print("YAPPA_MASTER_KEY not set. Enter the password: ")
-		password, _, err := reader.ReadLine()
-
+		password, err := term.ReadPassword(int(syscall.Stdin))
 		if err != nil {
 			log.Fatalf("Error reading from stdin: %v", err)
 		}
@@ -87,7 +85,7 @@ func getTlsConfig() (*tls.Config, error) {
 	}, nil
 }
 
-func SetupServer(cfg *settings.Settings, userRepo auth.UserRepo) (*http3.Server, error) {
+func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo) (*http3.Server, error) {
 	settings.ChatSettings = cfg
 	err := settings.ChatSettings.Validate()
 

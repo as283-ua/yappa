@@ -4,8 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/as283-ua/yappa/internal/ca"
+	"github.com/as283-ua/yappa/internal/ca/settings"
 )
 
 var (
@@ -27,7 +31,7 @@ func main() {
 
 	flag.Parse()
 
-	server, err := ca.SetupServer(&ca.CmdArgs{
+	server, err := ca.SetupServer(&settings.CaCfg{
 		Addr:           *addr,
 		Cert:           *cert,
 		Key:            *key,
@@ -35,6 +39,16 @@ func main() {
 		RootCa:         *rootCa,
 		CaKey:          *caKey,
 	})
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		server.Close()
+		log.Println("Closed server")
+		os.Exit(0)
+	}()
 
 	if err != nil {
 		log.Fatal("Error seting up server:", err)

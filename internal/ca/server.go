@@ -4,12 +4,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"log"
 	"math/big"
 	"net/http"
 	"os"
 
+	"github.com/as283-ua/yappa/internal/ca/settings"
 	"github.com/as283-ua/yappa/internal/ca/signature"
 	"github.com/as283-ua/yappa/internal/middleware"
 	"github.com/quic-go/quic-go/http3"
@@ -20,58 +20,20 @@ var (
 	caKey  any
 )
 
-type CmdArgs struct {
-	Addr           string
-	Cert           string
-	Key            string
-	ChatServerCert string
-	RootCa         string
-	CaKey          string
-}
-
 var (
-	args      *CmdArgs
 	tlsConfig *tls.Config
 )
 
-func (c *CmdArgs) Validate() error {
-	if c.Addr == "" {
-		return fmt.Errorf("address must not be empty")
-	}
-
-	if c.Cert == "" {
-		return fmt.Errorf("cert must not be empty")
-	}
-
-	if c.Key == "" {
-		return fmt.Errorf("key must not be empty")
-	}
-
-	if c.ChatServerCert == "" {
-		return fmt.Errorf("chatServerCert must not be empty")
-	}
-
-	if c.RootCa == "" {
-		return fmt.Errorf("rootCa must not be empty")
-	}
-
-	if c.CaKey == "" {
-		return fmt.Errorf("caKey must not be empty")
-	}
-
-	return nil
-}
-
-func SetupServer(cmdArgs *CmdArgs) (*http3.Server, error) {
-	args = cmdArgs
-	err := args.Validate()
+func SetupServer(cmdArgs *settings.CaCfg) (*http3.Server, error) {
+	settings.CaSettings = cmdArgs
+	err := settings.CaSettings.Validate()
 	if err != nil {
 		return nil, err
 	}
 
 	tlsConfig = getTlsConfig()
 
-	serverCertSerial, err := getCertSerialN(args.ChatServerCert)
+	serverCertSerial, err := getCertSerialN(settings.CaSettings.ChatServerCert)
 
 	if err != nil {
 		return nil, err
@@ -86,7 +48,7 @@ func SetupServer(cmdArgs *CmdArgs) (*http3.Server, error) {
 	router.Handle("POST /reinstate/{username}", http.HandlerFunc(signature.Reinstate))
 
 	return &http3.Server{
-		Addr:      args.Addr,
+		Addr:      settings.CaSettings.Addr,
 		Handler:   router,
 		TLSConfig: tlsConfig,
 	}, nil
@@ -99,13 +61,13 @@ func getTlsConfig() *tls.Config {
 		log.Fatal(err)
 	}
 
-	cert, err := tls.LoadX509KeyPair(args.Cert, args.Key)
+	cert, err := tls.LoadX509KeyPair(settings.CaSettings.Cert, settings.CaSettings.Key)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	rootCAs := x509.NewCertPool()
-	caCertPath := args.RootCa
+	caCertPath := settings.CaSettings.RootCa
 
 	caCertBytes, err := os.ReadFile(caCertPath)
 	if err != nil {
@@ -139,7 +101,7 @@ func getCertSerialN(serverCert string) (*big.Int, error) {
 }
 
 func loadCA() error {
-	caCertBytes, err := os.ReadFile(args.RootCa)
+	caCertBytes, err := os.ReadFile(settings.CaSettings.RootCa)
 	if err != nil {
 		return err
 	}
@@ -150,7 +112,7 @@ func loadCA() error {
 		return err
 	}
 
-	caKeyBytes, err := os.ReadFile(args.CaKey)
+	caKeyBytes, err := os.ReadFile(settings.CaSettings.CaKey)
 	if err != nil {
 		return err
 	}

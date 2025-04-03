@@ -2,15 +2,16 @@ package settings
 
 import "fmt"
 
-type Settings struct {
+type ChatCfg struct {
 	Addr   string
 	Cert   string
 	Key    string
 	CaCert string
 	CaAddr string
+	LogDir string
 }
 
-func (c *Settings) Validate() error {
+func (c *ChatCfg) Validate() error {
 	if c.Addr == "" {
 		return fmt.Errorf("address must not be empty")
 	}
@@ -34,5 +35,5 @@ func (c *Settings) Validate() error {
 }
 
 var (
-	ChatSettings *Settings
+	ChatSettings *ChatCfg
 )

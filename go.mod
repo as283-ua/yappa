@@ -9,6 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/quic-go/quic-go v0.50.0
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/term v0.30.0
 	google.golang.org/protobuf v1.36.6
 )
 
