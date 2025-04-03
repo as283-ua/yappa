@@ -42,8 +42,11 @@ func SetupServer(cmdArgs *settings.CaCfg) (*http3.Server, error) {
 		return nil, err
 	}
 
-	if cmdArgs.LogDir == "" {
-		logging.SetOutput(cmdArgs.LogDir)
+	if cmdArgs.LogDir != "" {
+		err = logging.SetOutput(cmdArgs.LogDir)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	logger = logging.GetLogger()
 

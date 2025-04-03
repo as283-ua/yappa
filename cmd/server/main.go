@@ -4,12 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/as283-ua/yappa/internal/server"
+	"github.com/as283-ua/yappa/internal/server/logging"
 	"github.com/as283-ua/yappa/internal/server/settings"
 )
 
@@ -18,7 +18,8 @@ func main() {
 	cert := flag.String("cert", "certs/server/server.crt", "TLS Certificate")
 	key := flag.String("key", "certs/server/server.key", "TLS Key")
 	caCert := flag.String("ca", "certs/ca/ca.crt", "CA certificate")
-	caAddr := flag.String("ca-addr", "yappa.io:4434", "CA certificate")
+	caAddr := flag.String("ca-addr", "yappa.io:4434", "CA server ip address and port")
+	logDir := flag.String("logs", "logs/serv/", "Log directory")
 
 	flag.Parse()
 
@@ -28,7 +29,10 @@ func main() {
 		Key:    *key,
 		CaCert: *caCert,
 		CaAddr: *caAddr,
+		LogDir: *logDir,
 	}, server.SetupPgxDb(context.Background()))
+
+	log := logging.Logger
 
 	if err != nil {
 		log.Fatal(err)
@@ -47,6 +51,6 @@ func main() {
 	fmt.Println("Server started on https://" + *addr)
 
 	if err := server.ListenAndServeTLS(*cert, *key); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }

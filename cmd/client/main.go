@@ -26,7 +26,7 @@ func main() {
 	caCert = flag.String("cacert", "certs/ca/ca.crt", "Yappa CA certificate")
 	serverHost = flag.String("server", "yappa.io:4433", "Yappa chat server ip and port")
 	caHost = flag.String("ca", "yappa.io:4434", "Yappa CA server ip and port")
-	logsDir = flag.String("logs", "logs/", "Error logs directory.\n\"/dev/null\" or \"null\" to suppress error logs.\n\"-\" to show errors on-screen (buggy)")
+	logsDir = flag.String("logs", "logs/cli/", "Error logs directory.\n\"/dev/null\" or \"null\" to suppress error logs.\n\"-\" to show errors on-screen (buggy)")
 
 	flag.Parse()
 
@@ -41,7 +41,7 @@ func main() {
 	if *logsDir == "/dev/null" || *logsDir == "null" {
 		logFile, _ = os.Open(os.DevNull)
 	} else if *logsDir != "-" {
-		filename := time.Now().Format("2006-01-02_15-04-05") + "-yappa-err.log"
+		filename := time.Now().Format("2006-01-02_15-04-05") + "-session.log"
 
 		_, err := os.Stat(*logsDir)
 		if err != nil {

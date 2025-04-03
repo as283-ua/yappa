@@ -12,22 +12,14 @@ import (
 	"github.com/as283-ua/yappa/internal/ca/settings"
 )
 
-var (
-	addr           *string
-	cert           *string
-	chatServerCert *string
-	key            *string
-	rootCa         *string
-	caKey          *string
-)
-
 func main() {
-	addr = flag.String("ip", "0.0.0.0:4434", "Host IP and port")
-	cert = flag.String("cert", "certs/ca_server/ca_server.crt", "TLS Certificate")
-	key = flag.String("key", "certs/ca_server/ca_server.key", "TLS Key")
-	chatServerCert = flag.String("server-cert", "certs/server/server.crt", "TLS Certificate for chat server")
-	rootCa = flag.String("ca", "certs/ca/ca.crt", "Root CA certificate")
-	caKey = flag.String("ca-key", "certs/ca/ca.key", "Root CA private key")
+	addr := flag.String("ip", "0.0.0.0:4434", "Host IP and port")
+	cert := flag.String("cert", "certs/ca_server/ca_server.crt", "TLS Certificate")
+	key := flag.String("key", "certs/ca_server/ca_server.key", "TLS Key")
+	chatServerCert := flag.String("server-cert", "certs/server/server.crt", "TLS Certificate for chat server")
+	rootCa := flag.String("ca", "certs/ca/ca.crt", "Root CA certificate")
+	caKey := flag.String("ca-key", "certs/ca/ca.key", "Root CA private key")
+	logDir := flag.String("logs", "logs/ca/", "Log directory")
 
 	flag.Parse()
 
@@ -38,6 +30,7 @@ func main() {
 		ChatServerCert: *chatServerCert,
 		RootCa:         *rootCa,
 		CaKey:          *caKey,
+		LogDir:         *logDir,
 	})
 
 	log := logging.GetLogger()

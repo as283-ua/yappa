@@ -12,6 +12,7 @@ import (
 
 	"github.com/as283-ua/yappa/internal/server/auth"
 	"github.com/as283-ua/yappa/internal/server/connection"
+	"github.com/as283-ua/yappa/internal/server/logging"
 	"github.com/as283-ua/yappa/internal/server/settings"
 	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -38,6 +39,7 @@ func SetupPgxDb(ctx context.Context) *auth.PgxUserRepo {
 	if !exists {
 		fmt.Print("YAPPA_MASTER_KEY not set. Enter the password: ")
 		password, err := term.ReadPassword(int(syscall.Stdin))
+		fmt.Println()
 		if err != nil {
 			log.Fatalf("Error reading from stdin: %v", err)
 		}
@@ -106,6 +108,13 @@ func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo) (*http3.Server, 
 
 	if err != nil {
 		return nil, err
+	}
+
+	if cfg.LogDir != "" {
+		err = logging.SetOutput(cfg.LogDir)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	router := http.NewServeMux()

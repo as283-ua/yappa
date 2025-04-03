@@ -21,7 +21,7 @@ func GetLogger() *log.Logger {
 }
 
 func fileName(dir string) string {
-	return dir + time.Now().Format("2006-01-02") + "-ca.log"
+	return dir + time.Now().Format("2006-01-02") + "-server.log"
 }
 
 func SetOutput(dir string) error {
