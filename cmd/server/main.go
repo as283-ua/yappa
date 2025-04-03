@@ -32,7 +32,7 @@ func main() {
 		LogDir: *logDir,
 	}, server.SetupPgxDb(context.Background()))
 
-	log := logging.Logger
+	log := logging.GetLogger()
 
 	if err != nil {
 		log.Fatal(err)

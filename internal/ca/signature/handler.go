@@ -24,7 +24,6 @@ type RegTokens struct {
 
 var allowedUsers map[string]RegTokens = make(map[string]RegTokens)
 var mu sync.Mutex
-var log = logging.GetLogger()
 
 func validateAllow(allow *gen.AllowUser) error {
 	if len(allow.Token) != 64 {
@@ -39,6 +38,7 @@ func validateAllow(allow *gen.AllowUser) error {
 }
 
 func AllowUser(w http.ResponseWriter, req *http.Request) {
+	log := logging.GetLogger()
 	allowUser := &gen.AllowUser{}
 
 	content, err := io.ReadAll(req.Body)
@@ -81,6 +81,7 @@ func AllowUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func SignCert(caCert *x509.Certificate, caKey any) func(w http.ResponseWriter, req *http.Request) {
+	log := logging.GetLogger()
 	return func(w http.ResponseWriter, req *http.Request) {
 		certRequest := &gen.CertRequest{}
 		body, err := io.ReadAll(req.Body)
