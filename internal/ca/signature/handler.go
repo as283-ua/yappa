@@ -5,15 +5,15 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
+	"errors"
 	"io"
-	"log"
 	"math/big"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/internal/ca/logging"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -24,14 +24,15 @@ type RegTokens struct {
 
 var allowedUsers map[string]RegTokens = make(map[string]RegTokens)
 var mu sync.Mutex
+var log = logging.GetLogger()
 
 func validateAllow(allow *gen.AllowUser) error {
 	if len(allow.Token) != 64 {
-		return fmt.Errorf("invalid token")
+		return errors.New("invalid token")
 	}
 
 	if len(allow.User) < 3 {
-		return fmt.Errorf("invalid username length")
+		return errors.New("invalid username length")
 	}
 
 	return nil

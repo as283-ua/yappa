@@ -1,10 +1,13 @@
 package middleware
 
 import (
-	"log"
 	"math/big"
 	"net/http"
+
+	"github.com/as283-ua/yappa/internal/ca/logging"
 )
+
+var log = logging.GetLogger()
 
 func MatchCertSerialNumber(serialNumber *big.Int, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {

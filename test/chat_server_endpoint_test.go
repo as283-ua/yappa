@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -37,7 +38,7 @@ func (r MockUserRepo) GetUserByUsername(ctx context.Context, user string) (db.Us
 func (r *MockUserRepo) CreateUser(ctx context.Context, user, cert string) error {
 	_, err := r.GetUserByUsername(ctx, user)
 	if err == nil {
-		return fmt.Errorf("User already exists")
+		return errors.New("User already exists")
 	}
 	r.users[user] = db.User{ID: int32(r.serial), Username: user, Certificate: cert}
 	r.serial++

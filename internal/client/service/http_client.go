@@ -3,7 +3,7 @@ package service
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
+	"errors"
 	"net/http"
 	"os"
 
@@ -15,7 +15,7 @@ var httpClient *http.Client
 
 func GetHttp3Client() (*http.Client, error) {
 	if httpClient == nil {
-		return nil, fmt.Errorf("no http client set up")
+		return nil, errors.New("no http client set up")
 	}
 
 	return httpClient, nil
@@ -23,7 +23,7 @@ func GetHttp3Client() (*http.Client, error) {
 
 func InitHttp3Client(caCertPath string) error {
 	if httpClient != nil {
-		return fmt.Errorf("no http client set up")
+		return errors.New("no http client set up")
 	}
 
 	rootCAs := x509.NewCertPool()
@@ -54,7 +54,7 @@ func InitHttp3Client(caCertPath string) error {
 
 func UseCertificate(cert, key string) error {
 	if httpClient == nil {
-		return fmt.Errorf("no http client set up")
+		return errors.New("no http client set up")
 	}
 
 	x509cert, err := tls.LoadX509KeyPair(cert, key)
@@ -65,7 +65,7 @@ func UseCertificate(cert, key string) error {
 	t, ok := httpClient.Transport.(*http3.Transport)
 
 	if !ok {
-		return fmt.Errorf("http transport error")
+		return errors.New("http transport error")
 	}
 
 	t.TLSClientConfig.Certificates = append(t.TLSClientConfig.Certificates, x509cert)

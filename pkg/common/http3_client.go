@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -22,7 +23,7 @@ func InitHttp3Client(caCertPath string) error {
 	}
 
 	if !rootCAs.AppendCertsFromPEM(caCert) {
-		return fmt.Errorf("failed to append root CA certificate")
+		return errors.New("failed to append root CA certificate")
 	}
 
 	tlsConfig := &tls.Config{

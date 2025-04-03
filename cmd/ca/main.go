@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/as283-ua/yappa/internal/ca"
+	"github.com/as283-ua/yappa/internal/ca/logging"
 	"github.com/as283-ua/yappa/internal/ca/settings"
 )
 
@@ -39,6 +39,8 @@ func main() {
 		RootCa:         *rootCa,
 		CaKey:          *caKey,
 	})
+
+	log := logging.GetLogger()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)

@@ -1,6 +1,6 @@
 package settings
 
-import "fmt"
+import "errors"
 
 type CaCfg struct {
 	Addr           string
@@ -9,31 +9,32 @@ type CaCfg struct {
 	ChatServerCert string
 	RootCa         string
 	CaKey          string
+	LogDir         string
 }
 
 func (c *CaCfg) Validate() error {
 	if c.Addr == "" {
-		return fmt.Errorf("address must not be empty")
+		return errors.New("address must not be empty")
 	}
 
 	if c.Cert == "" {
-		return fmt.Errorf("cert must not be empty")
+		return errors.New("cert must not be empty")
 	}
 
 	if c.Key == "" {
-		return fmt.Errorf("key must not be empty")
+		return errors.New("key must not be empty")
 	}
 
 	if c.ChatServerCert == "" {
-		return fmt.Errorf("chatServerCert must not be empty")
+		return errors.New("chatServerCert must not be empty")
 	}
 
 	if c.RootCa == "" {
-		return fmt.Errorf("rootCa must not be empty")
+		return errors.New("rootCa must not be empty")
 	}
 
 	if c.CaKey == "" {
-		return fmt.Errorf("caKey must not be empty")
+		return errors.New("caKey must not be empty")
 	}
 
 	return nil

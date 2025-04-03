@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/as283-ua/yappa/internal/ca/logging"
 	"github.com/as283-ua/yappa/internal/ca/settings"
 	"github.com/as283-ua/yappa/internal/ca/signature"
 	"github.com/as283-ua/yappa/internal/middleware"
@@ -24,6 +25,8 @@ var (
 	tlsConfig *tls.Config
 )
 
+var logger *log.Logger
+
 func SetupServer(cmdArgs *settings.CaCfg) (*http3.Server, error) {
 	settings.CaSettings = cmdArgs
 	err := settings.CaSettings.Validate()
@@ -38,6 +41,11 @@ func SetupServer(cmdArgs *settings.CaCfg) (*http3.Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if cmdArgs.LogDir == "" {
+		logging.SetOutput(cmdArgs.LogDir)
+	}
+	logger = logging.GetLogger()
 
 	router := http.NewServeMux()
 
@@ -58,12 +66,12 @@ func getTlsConfig() *tls.Config {
 	err := loadCA()
 
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	cert, err := tls.LoadX509KeyPair(settings.CaSettings.Cert, settings.CaSettings.Key)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	rootCAs := x509.NewCertPool()
@@ -71,7 +79,7 @@ func getTlsConfig() *tls.Config {
 
 	caCertBytes, err := os.ReadFile(caCertPath)
 	if err != nil {
-		log.Fatal("Failed to read root CA certificate:", err)
+		logger.Fatal("Failed to read root CA certificate:", err)
 	}
 
 	rootCAs.AppendCertsFromPEM(caCertBytes)
