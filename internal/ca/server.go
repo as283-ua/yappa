@@ -12,7 +12,6 @@ import (
 	"github.com/as283-ua/yappa/internal/ca/logging"
 	"github.com/as283-ua/yappa/internal/ca/settings"
 	"github.com/as283-ua/yappa/internal/ca/signature"
-	"github.com/as283-ua/yappa/internal/middleware"
 	"github.com/quic-go/quic-go/http3"
 )
 
@@ -52,7 +51,7 @@ func SetupServer(cmdArgs *settings.CaCfg) (*http3.Server, error) {
 
 	router := http.NewServeMux()
 
-	router.Handle("POST /allow", middleware.MatchCertSerialNumber(serverCertSerial, http.HandlerFunc(signature.AllowUser)))
+	router.Handle("POST /allow", signature.MatchCertSerialNumber(serverCertSerial, http.HandlerFunc(signature.AllowUser)))
 	router.Handle("POST /sign", http.HandlerFunc(signature.SignCert(caCert, caKey)))
 	router.Handle("GET /certificates", http.HandlerFunc(signature.Getcertificates))
 	router.Handle("POST /revoke/{username}", http.HandlerFunc(signature.Revoke))

@@ -1,4 +1,4 @@
-package middleware
+package signature
 
 import (
 	"math/big"
