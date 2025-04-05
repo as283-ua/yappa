@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
@@ -36,7 +37,9 @@ func GetHttp3Client(certPath, certificateOwner, caCertPath string) *http.Client 
 
 	transport := &http3.Transport{
 		TLSClientConfig: tlsConfig,
-		QUICConfig:      &quic.Config{},
+		QUICConfig: &quic.Config{
+			MaxIdleTimeout: 60 * time.Second,
+		},
 	}
 
 	return &http.Client{

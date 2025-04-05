@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/as283-ua/yappa/internal/server/auth"
 	"github.com/as283-ua/yappa/internal/server/connection"
@@ -21,7 +22,8 @@ import (
 )
 
 var (
-	tlsConfig *tls.Config
+	tlsConfig     *tls.Config
+	tlsVerifyOpts x509.VerifyOptions
 )
 
 func getEnv(key, fallback string) string {
@@ -79,11 +81,16 @@ func getTlsConfig() (*tls.Config, error) {
 
 	rootCAs.AppendCertsFromPEM(caCertBytes)
 
+	tlsVerifyOpts = x509.VerifyOptions{
+		Roots: rootCAs,
+	}
+
 	return &tls.Config{
 		MinVersion:   tls.VersionTLS13,
 		Certificates: []tls.Certificate{cert},
-		ClientAuth:   tls.VerifyClientCertIfGiven,
+		ClientAuth:   tls.RequestClientCert,
 		NextProtos:   []string{"h3"},
+		RootCAs:      rootCAs,
 	}, nil
 }
 
@@ -119,14 +126,16 @@ func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo) (*http3.Server, 
 
 	router := http.NewServeMux()
 
-	router.Handle("CONNECT /connect", http.HandlerFunc(connection.Connection))
+	router.Handle("CONNECT /connect", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(connection.Connection)))
+	router.Handle("GET /test", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200); w.Write([]byte("good")) })))
 	router.Handle("POST /register", http.HandlerFunc(auth.RegisterInit))
 	router.Handle("POST /register/confirm", http.HandlerFunc(auth.RegisterComplete))
 
 	server := &http3.Server{
-		Addr:      settings.ChatSettings.Addr,
-		Handler:   router,
-		TLSConfig: tlsConfig,
+		Addr:        settings.ChatSettings.Addr,
+		Handler:     router,
+		TLSConfig:   tlsConfig,
+		IdleTimeout: 60 * time.Second,
 	}
 
 	return server, nil

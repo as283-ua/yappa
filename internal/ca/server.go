@@ -89,7 +89,7 @@ func getTlsConfig() *tls.Config {
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		ClientCAs:    rootCAs,
-		ClientAuth:   tls.VerifyClientCertIfGiven,
+		ClientAuth:   tls.RequestClientCert,
 		NextProtos:   []string{"h3"},
 	}
 }

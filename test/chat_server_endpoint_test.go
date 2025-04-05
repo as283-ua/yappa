@@ -162,3 +162,37 @@ func TestRegister(t *testing.T) {
 
 	defer resp.Body.Close()
 }
+
+func TestRequireCertClient(t *testing.T) {
+	setup()
+
+	t.Run("no_cert_errors", func(t *testing.T) {
+		client := GetHttp3Client("../certs", "", DefaultChatServerArgs.CaCert)
+
+		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/test")
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		assert.Equal(t, r.StatusCode, http.StatusBadRequest)
+	})
+
+	t.Run("with_cert_ok", func(t *testing.T) {
+		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+
+		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/test")
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		assert.Equal(t, r.StatusCode, http.StatusOK)
+	})
+
+	t.Run("with_incorrect_cert_errors", func(t *testing.T) {
+		client := GetHttp3Client("../certs", "test_bad", DefaultChatServerArgs.CaCert)
+
+		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/test")
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		assert.Equal(t, r.StatusCode, http.StatusBadRequest)
+	})
+}

@@ -23,7 +23,7 @@ func main() {
 
 	flag.Parse()
 
-	server, err := server.SetupServer(&settings.ChatCfg{
+	srv, err := server.SetupServer(&settings.ChatCfg{
 		Addr:   *addr,
 		Cert:   *cert,
 		Key:    *key,
@@ -43,14 +43,14 @@ func main() {
 
 	go func() {
 		<-sigChan
-		server.Close()
+		srv.Close()
 		log.Println("Closed server")
 		os.Exit(0)
 	}()
 
 	fmt.Println("Server started on https://" + *addr)
 
-	if err := server.ListenAndServeTLS(*cert, *key); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

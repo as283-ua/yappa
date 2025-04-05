@@ -9,7 +9,7 @@ fi
 mkdir -p certs/$1
 rm -rf certs/$1/*
 
-openssl ecparam -genkey -name secp384r1 -out certs/$1/$1.key
+openssl ecparam -genkey -name secp384r1 | openssl pkcs8 -topk8 -nocrypt -out certs/$1/$1.key
 openssl req -new -key certs/$1/$1.key -out certs/$1/$1.csr -config certs/server.cnf
 
 openssl req -noout -text -in certs/$1/$1.csr | grep -A 1 "Subject Alternative Name"
