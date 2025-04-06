@@ -246,7 +246,7 @@ func completeRegistration(username string, certResponse *gen.CertResponse) tea.C
 }
 
 func savePemFile(pemBytes []byte, file string) error {
-	pem, err := os.OpenFile(settings.CliSettings.CertDir+file, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	pem, err := os.OpenFile(settings.CliSettings.CertDir+file, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Println("Pem create error: ", err)
 		return errors.New("could not save certificate")

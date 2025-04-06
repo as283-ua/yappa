@@ -8,8 +8,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/client/service"
@@ -194,5 +196,42 @@ func TestRequireCertClient(t *testing.T) {
 			t.FailNow()
 		}
 		assert.Equal(t, r.StatusCode, http.StatusBadRequest)
+	})
+}
+
+func TestConnection(t *testing.T) {
+	setup()
+
+	t.Run("send_init_chat_type", func(t *testing.T) {
+		t.Skip()
+
+		// not very reliable test, just proof of concept
+		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
+		u, err := url.Parse(serverURL)
+		if !assert.NoError(t, err) {
+			return
+		}
+		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+		str, err := Http3Stream(context.Background(), u, client.Transport.(*http3.Transport))
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		defer str.Close()
+
+		msg := &gen.ClientMessage{
+			Payload: &gen.ClientMessage_Init{Init: &gen.ChatInit{
+				EncInboxId: []byte{0, 1, 2, 3},
+				Key:        []byte{0, 1, 2, 3},
+			}},
+		}
+
+		m, err := proto.Marshal(msg)
+		if !assert.NoError(t, err) {
+			return
+		}
+		str.Write(m)
+		timer := time.NewTimer(5 * time.Minute)
+		<-timer.C
 	})
 }

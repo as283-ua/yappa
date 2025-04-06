@@ -17,7 +17,9 @@ import (
 	"github.com/as283-ua/yappa/internal/server/settings"
 	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
+	"github.com/quic-go/quic-go/qlog"
 	"golang.org/x/term"
 )
 
@@ -136,7 +138,13 @@ func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo) (*http3.Server, 
 		Handler:     router,
 		TLSConfig:   tlsConfig,
 		IdleTimeout: 60 * time.Second,
+		QUICConfig: &quic.Config{
+			EnableDatagrams: true,
+			Tracer:          qlog.DefaultConnectionTracer,
+		},
 	}
+
+	server.EnableDatagrams = true
 
 	return server, nil
 }

@@ -4,6 +4,7 @@ package chat;
 
 option go_package = "github.com/as283-ua/yappa/api/gen";
 
+// registration messages
 message RegistrationRequest {
     string user = 1;
 }
@@ -17,4 +18,34 @@ message ConfirmRegistration {
     string user = 1;
     bytes token = 2;
     bytes cert  = 3;
+}
+
+// chat message types
+message SendMsg {
+    string receiver = 1;
+    bytes inboxId = 2;
+    string message = 3;
+}
+
+message ChatInit {
+    bytes encInboxId = 1;
+    bytes key = 2;
+}
+
+message HeartBeat {
+    int32 a = 1;
+}
+
+message ClientMessage {
+    oneof payload {
+        SendMsg send = 1;
+        ChatInit init = 2;
+        HeartBeat hb = 3;
+    }
+}
+
+message ServerMessage {
+    oneof payload {
+        SendMsg send = 1;
+    }
 }
