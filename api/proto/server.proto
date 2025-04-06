@@ -32,9 +32,7 @@ message ChatInit {
     bytes key = 2;
 }
 
-message HeartBeat {
-    int32 a = 1;
-}
+message HeartBeat {}
 
 message ClientMessage {
     oneof payload {
