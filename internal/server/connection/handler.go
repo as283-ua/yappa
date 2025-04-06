@@ -1,7 +1,9 @@
 package connection
 
 import (
+	"encoding/binary"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -11,7 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var sessions map[string]*http3.Stream
+var sessions map[string]*http3.Stream = make(map[string]*http3.Stream)
 
 func upgrade(w http.ResponseWriter) (http3.Stream, error) {
 	conn := w.(http3.Hijacker).Connection()
@@ -50,15 +52,19 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 	sessions[username] = &str
 
 	for {
-		msg := make([]byte, 1024)
-		n, err := str.Read(msg)
+		var lenBuf [4]byte
+		_, err := io.ReadFull(str, lenBuf[:])
 		if err != nil {
-			logger.Println("Failed to read full message:", err)
+			logger.Println("Failed to read length:", err)
 			return
 		}
+		msgLen := binary.BigEndian.Uint32(lenBuf[:])
+		var msg []byte = make([]byte, msgLen)
+
+		str.Read(msg)
 
 		protoMsg := &gen.ClientMessage{}
-		err = proto.Unmarshal(msg[:n], protoMsg)
+		err = proto.Unmarshal(msg, protoMsg)
 
 		if err != nil {
 			logger.Println("Failed to unmarshall client data:", err)

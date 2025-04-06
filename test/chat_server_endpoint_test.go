@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -203,7 +204,7 @@ func TestConnection(t *testing.T) {
 	setup()
 
 	t.Run("send_init_chat_type", func(t *testing.T) {
-		t.Skip()
+		// t.Skip()
 
 		// not very reliable test, just proof of concept
 		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
@@ -230,7 +231,13 @@ func TestConnection(t *testing.T) {
 		if !assert.NoError(t, err) {
 			return
 		}
-		str.Write(m)
+
+		// length of message at the start of the frame
+		messageLen := len(m)
+		lenBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(lenBytes, uint32(messageLen))
+
+		str.Write(append(lenBytes, m...))
 		timer := time.NewTimer(5 * time.Minute)
 		<-timer.C
 	})
