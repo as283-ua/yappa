@@ -9,6 +9,37 @@ import (
 	"context"
 )
 
+const addMessage = `-- name: AddMessage :exec
+INSERT INTO chat_inbox_messages (inbox_code, enc_msg) 
+VALUES ($1, $2)
+`
+
+type AddMessageParams struct {
+	InboxCode int32
+	EncMsg    []byte
+}
+
+func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
+	_, err := q.db.Exec(ctx, addMessage, arg.InboxCode, arg.EncMsg)
+	return err
+}
+
+const createInbox = `-- name: CreateInbox :exec
+INSERT INTO chat_inboxes (code, current_token, enc_token) 
+VALUES ($1, $2, $3)
+`
+
+type CreateInboxParams struct {
+	Code         []byte
+	CurrentToken []byte
+	EncToken     []byte
+}
+
+func (q *Queries) CreateInbox(ctx context.Context, arg CreateInboxParams) error {
+	_, err := q.db.Exec(ctx, createInbox, arg.Code, arg.CurrentToken, arg.EncToken)
+	return err
+}
+
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (username, certificate) 
 VALUES ($1, $2)
@@ -24,6 +55,81 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const flushInbox = `-- name: FlushInbox :exec
+DELETE FROM chat_inbox_messages
+WHERE inbox_code = $1
+`
+
+func (q *Queries) FlushInbox(ctx context.Context, inboxCode int32) error {
+	_, err := q.db.Exec(ctx, flushInbox, inboxCode)
+	return err
+}
+
+const getInboxToken = `-- name: GetInboxToken :one
+SELECT current_token
+FROM chat_inboxes
+WHERE code = $1
+`
+
+func (q *Queries) GetInboxToken(ctx context.Context, code []byte) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getInboxToken, code)
+	var current_token []byte
+	err := row.Scan(&current_token)
+	return current_token, err
+}
+
+const getMessages = `-- name: GetMessages :many
+SELECT enc_msg
+FROM chat_inbox_messages
+WHERE inbox_code = $1
+`
+
+func (q *Queries) GetMessages(ctx context.Context, inboxCode int32) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, getMessages, inboxCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items [][]byte
+	for rows.Next() {
+		var enc_msg []byte
+		if err := rows.Scan(&enc_msg); err != nil {
+			return nil, err
+		}
+		items = append(items, enc_msg)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getNewUserInboxes = `-- name: GetNewUserInboxes :many
+SELECT enc_inbox_code
+FROM user_inboxes
+WHERE username = $1
+`
+
+func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, getNewUserInboxes, username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items [][]byte
+	for rows.Next() {
+		var enc_inbox_code []byte
+		if err := rows.Scan(&enc_inbox_code); err != nil {
+			return nil, err
+		}
+		items = append(items, enc_inbox_code)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, certificate
 FROM users
@@ -37,18 +143,34 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 	return i, err
 }
 
-const updateUserCert = `-- name: UpdateUserCert :exec
-UPDATE users 
-SET certificate = $2
-WHERE username = $1
+const newUserInbox = `-- name: NewUserInbox :exec
+INSERT INTO user_inboxes (username, enc_inbox_code)
+VALUES ($1, $2)
 `
 
-type UpdateUserCertParams struct {
-	Username    string
-	Certificate string
+type NewUserInboxParams struct {
+	Username     string
+	EncInboxCode []byte
 }
 
-func (q *Queries) UpdateUserCert(ctx context.Context, arg UpdateUserCertParams) error {
-	_, err := q.db.Exec(ctx, updateUserCert, arg.Username, arg.Certificate)
+func (q *Queries) NewUserInbox(ctx context.Context, arg NewUserInboxParams) error {
+	_, err := q.db.Exec(ctx, newUserInbox, arg.Username, arg.EncInboxCode)
+	return err
+}
+
+const setToken = `-- name: SetToken :exec
+UPDATE chat_inboxes
+SET current_token = $2, enc_token = $3
+WHERE code = $1
+`
+
+type SetTokenParams struct {
+	Code         []byte
+	CurrentToken []byte
+	EncToken     []byte
+}
+
+func (q *Queries) SetToken(ctx context.Context, arg SetTokenParams) error {
+	_, err := q.db.Exec(ctx, setToken, arg.Code, arg.CurrentToken, arg.EncToken)
 	return err
 }

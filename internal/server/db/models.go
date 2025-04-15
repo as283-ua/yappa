@@ -4,8 +4,25 @@
 
 package db
 
+type ChatInbox struct {
+	Code         []byte
+	CurrentToken []byte
+	EncToken     []byte
+}
+
+type ChatInboxMessage struct {
+	ID        int32
+	InboxCode int32
+	EncMsg    []byte
+}
+
 type User struct {
 	ID          int32
 	Username    string
 	Certificate string
+}
+
+type UserInbox struct {
+	Username     string
+	EncInboxCode []byte
 }
