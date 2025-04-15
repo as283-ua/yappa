@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/as283-ua/yappa/internal/server/auth"
+	"github.com/as283-ua/yappa/internal/server/chat"
 	"github.com/as283-ua/yappa/internal/server/connection"
 	"github.com/as283-ua/yappa/internal/server/logging"
 	"github.com/as283-ua/yappa/internal/server/settings"
@@ -35,7 +36,7 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func SetupPgxDb(ctx context.Context) *auth.PgxUserRepo {
+func SetupPgxDb(ctx context.Context) (*auth.PgxUserRepo, *chat.PgxChatRepo) {
 	user := getEnv("YAPPA_DB_USER", "yappa")
 	host := getEnv("YAPPA_DB_HOST", "localhost:5432")
 	pass, exists := os.LookupEnv("YAPPA_MASTER_KEY")
@@ -63,7 +64,7 @@ func SetupPgxDb(ctx context.Context) *auth.PgxUserRepo {
 		log.Fatalf("DB connection error: %v", err)
 	}
 
-	return &auth.PgxUserRepo{Pool: pool}
+	return &auth.PgxUserRepo{Pool: pool}, &chat.PgxChatRepo{Pool: pool, Ctx: context.Background()}
 }
 
 func getTlsConfig() (*tls.Config, error) {
@@ -96,7 +97,7 @@ func getTlsConfig() (*tls.Config, error) {
 	}, nil
 }
 
-func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo) (*http3.Server, error) {
+func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo, chatRepo chat.ChatRepo) (*http3.Server, error) {
 	settings.ChatSettings = cfg
 	err := settings.ChatSettings.Validate()
 
@@ -105,6 +106,7 @@ func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo) (*http3.Server, 
 	}
 
 	auth.Repo = userRepo
+	chat.Repo = chatRepo
 
 	err = common.InitHttp3Client(settings.ChatSettings.CaCert)
 	if err != nil {

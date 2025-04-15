@@ -23,6 +23,7 @@ func main() {
 
 	flag.Parse()
 
+	authRepo, chatRepo := server.SetupPgxDb(context.Background())
 	srv, err := server.SetupServer(&settings.ChatCfg{
 		Addr:   *addr,
 		Cert:   *cert,
@@ -30,7 +31,7 @@ func main() {
 		CaCert: *caCert,
 		CaAddr: *caAddr,
 		LogDir: *logDir,
-	}, server.SetupPgxDb(context.Background()))
+	}, authRepo, chatRepo)
 
 	log := logging.GetLogger()
 

@@ -48,6 +48,43 @@ func (r *MockUserRepo) CreateUser(ctx context.Context, user, cert string) error 
 	return nil
 }
 
+type MockChatRepo struct {
+	users  map[string]db.User
+	serial int
+}
+
+func (r MockChatRepo) ShareChatInbox(username string, encInboxCode, encKey []byte) error {
+	return nil
+}
+
+func (r MockChatRepo) CreateChatInbox(inboxCode []byte) error {
+	return nil
+}
+
+func (r MockChatRepo) GetNewChats(username string) ([]db.GetNewUserInboxesRow, error) {
+	return nil, nil
+}
+
+func (r MockChatRepo) SetInboxToken(inboxCode, token, encToken []byte) error {
+	return nil
+}
+
+func (r MockChatRepo) GetToken(inboxCode []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func (r MockChatRepo) AddMessage(inboxCode, encMsg []byte) error {
+	return nil
+}
+
+func (r MockChatRepo) GetMessages(inboxCode []byte) ([][]byte, error) {
+	return nil, nil
+}
+
+func (r MockChatRepo) FlushInbox(inboxCode []byte) error {
+	return nil
+}
+
 var caServer, chatServer *http3.Server
 
 func setup() {
@@ -63,7 +100,9 @@ func setup() {
 }
 
 func RunChatServer() *http3.Server {
-	server, err := server.SetupServer(&DefaultChatServerArgs, &MockUserRepo{users: make(map[string]db.User), serial: 0})
+	server, err := server.SetupServer(&DefaultChatServerArgs,
+		&MockUserRepo{users: make(map[string]db.User), serial: 0},
+		&MockChatRepo{})
 
 	if err != nil {
 		log.Fatal("Error booting server: ", err)
@@ -222,8 +261,9 @@ func TestConnection(t *testing.T) {
 
 		msg := &gen.ClientMessage{
 			Payload: &gen.ClientMessage_Init{Init: &gen.ChatInit{
-				EncInboxId: []byte{0, 1, 2, 3},
-				Key:        []byte{0, 1, 2, 3},
+				Username: "",
+				InboxId:  []byte{0, 1, 2, 3},
+				EncKey:   []byte{0, 1, 2, 3},
 			}},
 		}
 

@@ -15,10 +15,11 @@ VALUES ($1, $2)
 `
 
 type AddMessageParams struct {
-	InboxCode int32
+	InboxCode []byte
 	EncMsg    []byte
 }
 
+// -- CHAT MESSAGES
 func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
 	_, err := q.db.Exec(ctx, addMessage, arg.InboxCode, arg.EncMsg)
 	return err
@@ -26,17 +27,12 @@ func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
 
 const createInbox = `-- name: CreateInbox :exec
 INSERT INTO chat_inboxes (code, current_token, enc_token) 
-VALUES ($1, $2, $3)
+VALUES ($1, NULL, NULl)
 `
 
-type CreateInboxParams struct {
-	Code         []byte
-	CurrentToken []byte
-	EncToken     []byte
-}
-
-func (q *Queries) CreateInbox(ctx context.Context, arg CreateInboxParams) error {
-	_, err := q.db.Exec(ctx, createInbox, arg.Code, arg.CurrentToken, arg.EncToken)
+// -- CHAT INBOXES
+func (q *Queries) CreateInbox(ctx context.Context, code []byte) error {
+	_, err := q.db.Exec(ctx, createInbox, code)
 	return err
 }
 
@@ -60,7 +56,7 @@ DELETE FROM chat_inbox_messages
 WHERE inbox_code = $1
 `
 
-func (q *Queries) FlushInbox(ctx context.Context, inboxCode int32) error {
+func (q *Queries) FlushInbox(ctx context.Context, inboxCode []byte) error {
 	_, err := q.db.Exec(ctx, flushInbox, inboxCode)
 	return err
 }
@@ -84,7 +80,7 @@ FROM chat_inbox_messages
 WHERE inbox_code = $1
 `
 
-func (q *Queries) GetMessages(ctx context.Context, inboxCode int32) ([][]byte, error) {
+func (q *Queries) GetMessages(ctx context.Context, inboxCode []byte) ([][]byte, error) {
 	rows, err := q.db.Query(ctx, getMessages, inboxCode)
 	if err != nil {
 		return nil, err
@@ -105,24 +101,29 @@ func (q *Queries) GetMessages(ctx context.Context, inboxCode int32) ([][]byte, e
 }
 
 const getNewUserInboxes = `-- name: GetNewUserInboxes :many
-SELECT enc_inbox_code
+SELECT enc_inbox_code, enc_key
 FROM user_inboxes
 WHERE username = $1
 `
 
-func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([][]byte, error) {
+type GetNewUserInboxesRow struct {
+	EncInboxCode []byte
+	EncKey       []byte
+}
+
+func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]GetNewUserInboxesRow, error) {
 	rows, err := q.db.Query(ctx, getNewUserInboxes, username)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items [][]byte
+	var items []GetNewUserInboxesRow
 	for rows.Next() {
-		var enc_inbox_code []byte
-		if err := rows.Scan(&enc_inbox_code); err != nil {
+		var i GetNewUserInboxesRow
+		if err := rows.Scan(&i.EncInboxCode, &i.EncKey); err != nil {
 			return nil, err
 		}
-		items = append(items, enc_inbox_code)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -136,6 +137,7 @@ FROM users
 WHERE username = $1
 `
 
+// -- AUTH
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByUsername, username)
 	var i User
@@ -144,17 +146,19 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 }
 
 const newUserInbox = `-- name: NewUserInbox :exec
-INSERT INTO user_inboxes (username, enc_inbox_code)
-VALUES ($1, $2)
+INSERT INTO user_inboxes (username, enc_inbox_code, enc_key)
+VALUES ($1, $2, $3)
 `
 
 type NewUserInboxParams struct {
 	Username     string
 	EncInboxCode []byte
+	EncKey       []byte
 }
 
+// -- USER PERSONAL INBOXES
 func (q *Queries) NewUserInbox(ctx context.Context, arg NewUserInboxParams) error {
-	_, err := q.db.Exec(ctx, newUserInbox, arg.Username, arg.EncInboxCode)
+	_, err := q.db.Exec(ctx, newUserInbox, arg.Username, arg.EncInboxCode, arg.EncKey)
 	return err
 }
 

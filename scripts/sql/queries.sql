@@ -1,3 +1,4 @@
+---- AUTH
 -- name: GetUserByUsername :one
 SELECT id, username, certificate
 FROM users
@@ -7,18 +8,22 @@ WHERE username = $1;
 INSERT INTO users (username, certificate) 
 VALUES ($1, $2);
 
+
+---- USER PERSONAL INBOXES
 -- name: NewUserInbox :exec
-INSERT INTO user_inboxes (username, enc_inbox_code)
-VALUES ($1, $2);
+INSERT INTO user_inboxes (username, enc_inbox_code, enc_key)
+VALUES ($1, $2, $3);
 
 -- name: GetNewUserInboxes :many
-SELECT enc_inbox_code
+SELECT enc_inbox_code, enc_key
 FROM user_inboxes
 WHERE username = $1;
 
+
+---- CHAT INBOXES
 -- name: CreateInbox :exec
 INSERT INTO chat_inboxes (code, current_token, enc_token) 
-VALUES ($1, $2, $3);
+VALUES ($1, NULL, NULl);
 
 -- name: SetToken :exec
 UPDATE chat_inboxes
@@ -30,6 +35,8 @@ SELECT current_token
 FROM chat_inboxes
 WHERE code = $1;
 
+
+---- CHAT MESSAGES
 -- name: AddMessage :exec
 INSERT INTO chat_inbox_messages (inbox_code, enc_msg) 
 VALUES ($1, $2);

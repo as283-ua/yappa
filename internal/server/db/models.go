@@ -12,7 +12,7 @@ type ChatInbox struct {
 
 type ChatInboxMessage struct {
 	ID        int32
-	InboxCode int32
+	InboxCode []byte
 	EncMsg    []byte
 }
 
@@ -25,4 +25,5 @@ type User struct {
 type UserInbox struct {
 	Username     string
 	EncInboxCode []byte
+	EncKey       []byte
 }

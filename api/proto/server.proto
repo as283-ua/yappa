@@ -28,8 +28,9 @@ message SendMsg {
 }
 
 message ChatInit {
-    bytes encInboxId = 1;
-    bytes key = 2;
+    string username = 1;
+    bytes inboxId = 2;
+    bytes enc_key = 3;
 }
 
 message HeartBeat {}
@@ -40,6 +41,10 @@ message ClientMessage {
         ChatInit init = 2;
         HeartBeat hb = 3;
     }
+}
+
+message ReceiveMsg {
+    bytes enc_data = 1;
 }
 
 message ServerMessage {
