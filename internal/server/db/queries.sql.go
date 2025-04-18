@@ -25,6 +25,22 @@ func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
 	return err
 }
 
+const changeEcdhTemp = `-- name: ChangeEcdhTemp :exec
+UPDATE users
+SET ecdh_temp = $2
+WHERE username = $1
+`
+
+type ChangeEcdhTempParams struct {
+	Username string
+	EcdhTemp []byte
+}
+
+func (q *Queries) ChangeEcdhTemp(ctx context.Context, arg ChangeEcdhTempParams) error {
+	_, err := q.db.Exec(ctx, changeEcdhTemp, arg.Username, arg.EcdhTemp)
+	return err
+}
+
 const createInbox = `-- name: CreateInbox :exec
 INSERT INTO chat_inboxes (code, current_token, enc_token) 
 VALUES ($1, NULL, NULl)
@@ -132,7 +148,7 @@ func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]Get
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, certificate
+SELECT id, username, certificate, ecdh_temp
 FROM users
 WHERE username = $1
 `
@@ -141,7 +157,12 @@ WHERE username = $1
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByUsername, username)
 	var i User
-	err := row.Scan(&i.ID, &i.Username, &i.Certificate)
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Certificate,
+		&i.EcdhTemp,
+	)
 	return i, err
 }
 

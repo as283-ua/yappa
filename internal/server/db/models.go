@@ -20,6 +20,7 @@ type User struct {
 	ID          int32
 	Username    string
 	Certificate string
+	EcdhTemp    []byte
 }
 
 type UserInbox struct {

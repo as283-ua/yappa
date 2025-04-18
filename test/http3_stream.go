@@ -50,14 +50,14 @@ func (s BiStream) Close() error {
 	return nil
 }
 
-func Http3Stream(ctx context.Context, url *url.URL, tr *http3.Transport) (*BiStream, error) {
+func Http3Stream(ctx context.Context, url *url.URL, tr *http3.Transport, header http.Header) (*BiStream, error) {
 	result := &BiStream{}
 	req := &http.Request{
 		Method: http.MethodConnect,
 		Proto:  "HTTP/3",
 		Host:   url.Host,
 		URL:    url,
-		Header: http.Header{},
+		Header: header,
 	}
 	req = req.WithContext(ctx)
 
@@ -100,7 +100,7 @@ func Http3Stream(ctx context.Context, url *url.URL, tr *http3.Transport) (*BiStr
 	}
 
 	if rsp.StatusCode < 200 || rsp.StatusCode >= 300 {
-		return result, fmt.Errorf("received status %d", rsp.StatusCode)
+		return result, fmt.Errorf("received status %v", rsp.Status)
 	}
 
 	return &BiStream{qconn: &conn, h3Conn: clientConn, stream: &requestStr, resp: rsp}, nil

@@ -130,7 +130,7 @@ func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo, chatRepo chat.Ch
 
 	router := http.NewServeMux()
 
-	router.Handle("CONNECT /connect", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(connection.Connection)))
+	router.Handle("CONNECT /connect", connection.RequireEcdh(connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(connection.Connection))))
 	router.Handle("GET /test", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200); w.Write([]byte("good")) })))
 	router.Handle("POST /register", http.HandlerFunc(auth.RegisterInit))
 	router.Handle("POST /register/confirm", http.HandlerFunc(auth.RegisterComplete))

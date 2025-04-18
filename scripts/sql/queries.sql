@@ -1,12 +1,17 @@
 ---- AUTH
 -- name: GetUserByUsername :one
-SELECT id, username, certificate
+SELECT id, username, certificate, ecdh_temp
 FROM users
 WHERE username = $1;
 
 -- name: CreateUser :exec
 INSERT INTO users (username, certificate) 
 VALUES ($1, $2);
+
+-- name: ChangeEcdhTemp :exec
+UPDATE users
+SET ecdh_temp = $2
+WHERE username = $1;
 
 
 ---- USER PERSONAL INBOXES

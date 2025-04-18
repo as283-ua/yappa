@@ -3,6 +3,9 @@ package test
 import (
 	"bytes"
 	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -12,7 +15,6 @@ import (
 	"net/url"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/client/service"
@@ -48,9 +50,18 @@ func (r *MockUserRepo) CreateUser(ctx context.Context, user, cert string) error 
 	return nil
 }
 
+func (r *MockUserRepo) ChangeEcdhTemp(ctx context.Context, username string, ecdh []byte) error {
+	user, err := r.GetUserByUsername(ctx, username)
+	if err != nil {
+		return errors.New("User doesn't exist")
+	}
+
+	user.EcdhTemp = ecdh
+	r.users[username] = user
+	return nil
+}
+
 type MockChatRepo struct {
-	users  map[string]db.User
-	serial int
 }
 
 func (r MockChatRepo) ShareChatInbox(username string, encInboxCode, encKey []byte) error {
@@ -252,7 +263,15 @@ func TestConnection(t *testing.T) {
 			return
 		}
 		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
-		str, err := Http3Stream(context.Background(), u, client.Transport.(*http3.Transport))
+		ecdhKX25519, err := ecdh.X25519().GenerateKey(rand.Reader)
+		if !assert.NoError(t, err) {
+			return
+		}
+		ecdhBytes := ecdhKX25519.PublicKey().Bytes()
+		ecdhStr := base64.StdEncoding.EncodeToString(ecdhBytes)
+		header := http.Header{}
+		header.Add("X-Ecdh", ecdhStr)
+		str, err := Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), header)
 		if !assert.NoError(t, err) {
 			return
 		}
@@ -278,7 +297,65 @@ func TestConnection(t *testing.T) {
 		binary.BigEndian.PutUint32(lenBytes, uint32(messageLen))
 
 		str.Write(append(lenBytes, m...))
-		timer := time.NewTimer(5 * time.Minute)
-		<-timer.C
+		// timer := time.NewTimer(5 * time.Minute)
+		// <-timer.C
+	})
+
+	t.Run("require_ecdh_no_ecdh", func(t *testing.T) {
+		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
+		u, err := url.Parse(serverURL)
+		if !assert.NoError(t, err) {
+			return
+		}
+		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
+		if assert.Error(t, err) {
+			t.Log(err)
+			return
+		}
+	})
+
+	t.Run("require_ecdh_bad_ecdh", func(t *testing.T) {
+		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
+		u, err := url.Parse(serverURL)
+		if !assert.NoError(t, err) {
+			return
+		}
+		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+		ecdhK256, err := ecdh.P256().GenerateKey(rand.Reader)
+		if !assert.NoError(t, err) {
+			return
+		}
+		ecdhBytes := ecdhK256.PublicKey().Bytes()
+		ecdhStr := base64.StdEncoding.EncodeToString(ecdhBytes)
+		header := http.Header{}
+		header.Add("X-Ecdh", ecdhStr)
+		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), header)
+		if assert.Error(t, err) {
+			t.Log(err)
+			return
+		}
+	})
+
+	t.Run("require_ecdh_success", func(t *testing.T) {
+		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
+		u, err := url.Parse(serverURL)
+		if !assert.NoError(t, err) {
+			return
+		}
+		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+		ecdhKX25519, err := ecdh.X25519().GenerateKey(rand.Reader)
+		if !assert.NoError(t, err) {
+			return
+		}
+		ecdhBytes := ecdhKX25519.PublicKey().Bytes()
+		ecdhStr := base64.StdEncoding.EncodeToString(ecdhBytes)
+		header := http.Header{}
+		header.Add("X-Ecdh", ecdhStr)
+		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), header)
+		if !assert.NoError(t, err) {
+			t.Log(err)
+			return
+		}
 	})
 }
