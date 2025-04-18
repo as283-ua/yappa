@@ -11,7 +11,9 @@ import (
 	"golang.org/x/crypto/curve25519"
 )
 
-const EcdhCtxKey = "ecdh_pubkey"
+type MiddleWareCtx string
+
+const EcdhCtxKey MiddleWareCtx = "ecdh_pubkey"
 
 func RequireCertificate(tlsVerifyOpts x509.VerifyOptions, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

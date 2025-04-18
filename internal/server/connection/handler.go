@@ -2,6 +2,7 @@ package connection
 
 import (
 	"context"
+	"crypto/ecdh"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -39,9 +40,27 @@ func upgrade(w http.ResponseWriter) (http3.Stream, error) {
 }
 
 func Connection(w http.ResponseWriter, r *http.Request) {
-	username := r.TLS.PeerCertificates[0].Subject.CommonName
 	logger := logging.GetLogger()
+	username := r.TLS.PeerCertificates[0].Subject.CommonName
 	logger.Println("Someone connected:", username)
+
+	_, err := auth.Repo.GetUserByUsername(context.Background(), username)
+	if err == nil {
+		http.Error(w, "Invalid user", http.StatusBadRequest)
+		return
+	}
+
+	ecdhK, ok := r.Context().Value(EcdhCtxKey).(*ecdh.PublicKey)
+	if !ok {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	err = auth.Repo.ChangeEcdhTemp(context.Background(), username, ecdhK.Bytes())
+	if err != nil {
+		logger.Println(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	str, err := upgrade(w)
 	if err != nil {
