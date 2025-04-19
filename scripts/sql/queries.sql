@@ -20,7 +20,7 @@ INSERT INTO user_inboxes (username, enc_sender, enc_inbox_code, ecdh_pub)
 VALUES ($1, $2, $3, $4);
 
 -- name: GetNewUserInboxes :many
-SELECT enc_inbox_code, ecdh_pub
+SELECT enc_sender, enc_inbox_code, ecdh_pub
 FROM user_inboxes
 WHERE username = $1;
 
@@ -40,7 +40,7 @@ SET current_token = $2, enc_token = $3
 WHERE code = $1;
 
 -- name: GetInboxToken :one
-SELECT current_token
+SELECT current_token, enc_token
 FROM chat_inboxes
 WHERE code = $1;
 

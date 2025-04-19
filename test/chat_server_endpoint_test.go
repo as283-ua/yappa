@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -19,86 +18,14 @@ import (
 	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/server"
-	"github.com/as283-ua/yappa/internal/server/db"
+	"github.com/as283-ua/yappa/internal/server/auth"
+	"github.com/as283-ua/yappa/internal/server/chat"
 	"github.com/as283-ua/yappa/internal/server/settings"
-	"github.com/jackc/pgx/v5"
+	"github.com/as283-ua/yappa/test/mock"
 	"github.com/quic-go/quic-go/http3"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 )
-
-type MockUserRepo struct {
-	users  map[string]db.User
-	serial int
-}
-
-func (r MockUserRepo) GetUserByUsername(ctx context.Context, user string) (db.User, error) {
-	u, ok := r.users[user]
-	if !ok {
-		return u, pgx.ErrNoRows
-	}
-	return u, nil
-}
-
-func (r *MockUserRepo) CreateUser(ctx context.Context, user, cert string) error {
-	_, err := r.GetUserByUsername(ctx, user)
-	if err == nil {
-		return errors.New("User already exists")
-	}
-	r.users[user] = db.User{ID: int32(r.serial), Username: user, Certificate: cert}
-	r.serial++
-	return nil
-}
-
-func (r *MockUserRepo) ChangeEcdhTemp(ctx context.Context, username string, ecdh []byte) error {
-	user, err := r.GetUserByUsername(ctx, username)
-	if err != nil {
-		return errors.New("User doesn't exist")
-	}
-
-	user.EcdhTemp = ecdh
-	r.users[username] = user
-	return nil
-}
-
-type MockChatRepo struct {
-}
-
-func (r MockChatRepo) ShareChatInbox(username string, encSender, encInboxCode, ecdhPub []byte) error {
-	return nil
-}
-
-func (r MockChatRepo) CreateChatInbox(inboxCode []byte) error {
-	return nil
-}
-
-func (r MockChatRepo) GetNewChats(username string) ([]db.GetNewUserInboxesRow, error) {
-	return nil, nil
-}
-
-func (r MockChatRepo) DeleteNewChats(username string) error {
-	return nil
-}
-
-func (r MockChatRepo) SetInboxToken(inboxCode, token, encToken []byte) error {
-	return nil
-}
-
-func (r MockChatRepo) GetToken(inboxCode []byte) ([]byte, error) {
-	return nil, nil
-}
-
-func (r MockChatRepo) AddMessage(inboxCode, encMsg []byte) error {
-	return nil
-}
-
-func (r MockChatRepo) GetMessages(inboxCode []byte) ([][]byte, error) {
-	return nil, nil
-}
-
-func (r MockChatRepo) FlushInbox(inboxCode []byte) error {
-	return nil
-}
 
 var caServer, chatServer *http3.Server
 
@@ -116,8 +43,8 @@ func setup() {
 
 func RunChatServer() *http3.Server {
 	server, err := server.SetupServer(&DefaultChatServerArgs,
-		&MockUserRepo{users: make(map[string]db.User), serial: 0},
-		&MockChatRepo{})
+		mock.EmptyMockUserRepo(),
+		mock.EmptyMockChatRepo())
 
 	if err != nil {
 		log.Fatal("Error booting server: ", err)
@@ -359,5 +286,101 @@ func TestConnection(t *testing.T) {
 			t.Log(err)
 			return
 		}
+	})
+}
+
+func TestChatInit(t *testing.T) {
+	setup()
+
+	t.Run("init_chat", func(t *testing.T) {
+		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+
+		inboxId := make([]byte, 32)
+		rand.Read(inboxId)
+		regRequest := &gen.ChatInit{
+			InboxId: inboxId,
+		}
+
+		data, err := proto.Marshal(regRequest)
+
+		assert.NoError(t, err)
+		url := fmt.Sprintf("https://%v/chat/init", DefaultChatServerArgs.Addr)
+		resp, err := client.Post(url, "application/x-protobuf", bytes.NewReader(data))
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		defer resp.Body.Close()
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		repo, _ := chat.Repo.(*mock.MockChatRepo)
+		assert.Equal(t, len(repo.GetChatInboxes()), 1)
+		assert.Equal(t, repo.GetChatInboxes()[0].Code, inboxId)
+	})
+
+	t.Run("notify_chat", func(t *testing.T) {
+		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+
+		inboxId := make([]byte, 32)
+		rand.Read(inboxId)
+		regRequest := &gen.ChatInit{
+			InboxId: inboxId,
+		}
+
+		data, err := proto.Marshal(regRequest)
+
+		assert.NoError(t, err)
+		url := fmt.Sprintf("https://%v/chat/init", DefaultChatServerArgs.Addr)
+		resp, err := client.Post(url, "application/x-protobuf", bytes.NewReader(data))
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		defer resp.Body.Close()
+		ecdhReceiver, _ := ecdh.X25519().GenerateKey(rand.Reader)
+		ecdhSender, _ := ecdh.X25519().GenerateKey(rand.Reader)
+
+		receiverUsername := "Receiver"
+		auth.Repo.CreateUser(context.Background(), receiverUsername, "")
+		auth.Repo.ChangeEcdhTemp(context.Background(), receiverUsername, ecdhReceiver.PublicKey().Bytes())
+		aesK, _ := ecdhSender.ECDH(ecdhReceiver.PublicKey())
+
+		encSender, _ := Encrypt([]byte("Sender"), aesK)
+		encInboxId, _ := Encrypt(inboxId, aesK)
+
+		regRequest2 := &gen.ChatInitNotify{
+			Receiver:   receiverUsername,
+			EcdhPub:    ecdhSender.PublicKey().Bytes(),
+			EncSender:  encSender,
+			EncInboxId: encInboxId,
+		}
+
+		data, _ = proto.Marshal(regRequest2)
+		url = fmt.Sprintf("https://%v/chat/notify", DefaultChatServerArgs.Addr)
+		resp2, err := client.Post(url, "application/x-protobuf", bytes.NewReader(data))
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		defer resp2.Body.Close()
+
+		newChats, err := chat.Repo.GetNewChats(receiverUsername)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		assert.Equal(t, 1, len(newChats))
+		ecdhPub, err := ecdh.X25519().NewPublicKey(newChats[0].EcdhPub)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		aesK2, _ := ecdhReceiver.ECDH(ecdhPub)
+
+		inboxIdDec, err := Decrypt(newChats[0].EncInboxCode, aesK2)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		assert.Equal(t, inboxId, inboxIdDec)
+
+		senderDec, err := Decrypt(newChats[0].EncSender, aesK2)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		assert.Equal(t, "Sender", string(senderDec))
 	})
 }

@@ -88,16 +88,21 @@ func (q *Queries) FlushInbox(ctx context.Context, inboxCode []byte) error {
 }
 
 const getInboxToken = `-- name: GetInboxToken :one
-SELECT current_token
+SELECT current_token, enc_token
 FROM chat_inboxes
 WHERE code = $1
 `
 
-func (q *Queries) GetInboxToken(ctx context.Context, code []byte) ([]byte, error) {
+type GetInboxTokenRow struct {
+	CurrentToken []byte
+	EncToken     []byte
+}
+
+func (q *Queries) GetInboxToken(ctx context.Context, code []byte) (GetInboxTokenRow, error) {
 	row := q.db.QueryRow(ctx, getInboxToken, code)
-	var current_token []byte
-	err := row.Scan(&current_token)
-	return current_token, err
+	var i GetInboxTokenRow
+	err := row.Scan(&i.CurrentToken, &i.EncToken)
+	return i, err
 }
 
 const getMessages = `-- name: GetMessages :many
@@ -127,12 +132,13 @@ func (q *Queries) GetMessages(ctx context.Context, inboxCode []byte) ([][]byte, 
 }
 
 const getNewUserInboxes = `-- name: GetNewUserInboxes :many
-SELECT enc_inbox_code, ecdh_pub
+SELECT enc_sender, enc_inbox_code, ecdh_pub
 FROM user_inboxes
 WHERE username = $1
 `
 
 type GetNewUserInboxesRow struct {
+	EncSender    []byte
 	EncInboxCode []byte
 	EcdhPub      []byte
 }
@@ -146,7 +152,7 @@ func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]Get
 	var items []GetNewUserInboxesRow
 	for rows.Next() {
 		var i GetNewUserInboxesRow
-		if err := rows.Scan(&i.EncInboxCode, &i.EcdhPub); err != nil {
+		if err := rows.Scan(&i.EncSender, &i.EncInboxCode, &i.EcdhPub); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

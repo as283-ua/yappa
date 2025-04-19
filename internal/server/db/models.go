@@ -24,6 +24,7 @@ type User struct {
 }
 
 type UserInbox struct {
+	ID           int32
 	Username     string
 	EncSender    []byte
 	EncInboxCode []byte
