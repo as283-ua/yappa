@@ -58,3 +58,22 @@ message ServerMessage {
         SendMsg send = 1;
     }
 }
+
+message NewChat {
+    bytes EncSender = 1;
+	bytes EncInboxCode = 2;
+	bytes EcdhPub = 3;
+}
+
+message ListNewChats {
+    repeated NewChat chats = 1;
+}
+
+message GetNewMessages {
+    bytes inboxId = 1;
+    bytes token = 2;
+}
+
+message ListNewMessages {
+    repeated bytes msgs = 1;
+}
