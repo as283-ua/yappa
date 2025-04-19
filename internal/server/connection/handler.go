@@ -11,7 +11,6 @@ import (
 
 	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/server/auth"
-	"github.com/as283-ua/yappa/internal/server/chat"
 	"github.com/as283-ua/yappa/internal/server/logging"
 	"github.com/quic-go/quic-go/http3"
 	"google.golang.org/protobuf/proto"
@@ -97,23 +96,9 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 		case *gen.ClientMessage_Send:
 			chatSend := payload.Send
 			logger.Println(chatSend)
-		case *gen.ClientMessage_Init:
-			chatInit := payload.Init
-			logger.Println(chatInit)
-			initChat(chatInit)
 		case *gen.ClientMessage_Hb:
 		default:
 			// Unknown or unset
 		}
 	}
-}
-
-func initChat(chatInit *gen.ChatInit) error {
-	chat.Repo.CreateChatInbox(chatInit.InboxId)
-	auth.Repo.GetUserByUsername(context.Background(), chatInit.Username)
-
-	// get user key and encrypt the inbox code
-
-	chat.Repo.ShareChatInbox(chatInit.Username, []byte{}, chatInit.EncKey)
-	return nil
 }

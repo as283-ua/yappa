@@ -64,7 +64,7 @@ func (r *MockUserRepo) ChangeEcdhTemp(ctx context.Context, username string, ecdh
 type MockChatRepo struct {
 }
 
-func (r MockChatRepo) ShareChatInbox(username string, encInboxCode, encKey []byte) error {
+func (r MockChatRepo) ShareChatInbox(username string, encSender, encInboxCode, ecdhPub []byte) error {
 	return nil
 }
 
@@ -74,6 +74,10 @@ func (r MockChatRepo) CreateChatInbox(inboxCode []byte) error {
 
 func (r MockChatRepo) GetNewChats(username string) ([]db.GetNewUserInboxesRow, error) {
 	return nil, nil
+}
+
+func (r MockChatRepo) DeleteNewChats(username string) error {
+	return nil
 }
 
 func (r MockChatRepo) SetInboxToken(inboxCode, token, encToken []byte) error {
@@ -254,7 +258,7 @@ func TestConnection(t *testing.T) {
 	setup()
 
 	t.Run("send_init_chat_type", func(t *testing.T) {
-		// t.Skip()
+		t.Skip()
 
 		// not very reliable test, just proof of concept
 		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
@@ -280,9 +284,7 @@ func TestConnection(t *testing.T) {
 
 		msg := &gen.ClientMessage{
 			Payload: &gen.ClientMessage_Init{Init: &gen.ChatInit{
-				Username: "",
-				InboxId:  []byte{0, 1, 2, 3},
-				EncKey:   []byte{0, 1, 2, 3},
+				InboxId: []byte{0, 1, 2, 3},
 			}},
 		}
 

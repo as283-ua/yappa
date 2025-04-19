@@ -8,9 +8,10 @@ import (
 )
 
 type ChatRepo interface {
-	ShareChatInbox(username string, encInboxCode, encKey []byte) error
+	ShareChatInbox(username string, encSender, encInboxCode, ecdhPub []byte) error
 	CreateChatInbox(inboxCode []byte) error
 	GetNewChats(username string) ([]db.GetNewUserInboxesRow, error)
+	DeleteNewChats(username string) error
 	SetInboxToken(inboxCode, token, encToken []byte) error
 	GetToken(inboxCode []byte) ([]byte, error)
 	AddMessage(inboxCode, encMsg []byte) error
@@ -25,12 +26,13 @@ type PgxChatRepo struct {
 
 var Repo ChatRepo
 
-func (r PgxChatRepo) ShareChatInbox(username string, encInboxCode, encKey []byte) error {
+func (r PgxChatRepo) ShareChatInbox(username string, encSender, encInboxCode, ecdhPub []byte) error {
 	queries := db.New(r.Pool)
 	return queries.NewUserInbox(r.Ctx, db.NewUserInboxParams{
 		Username:     username,
+		EncSender:    encSender,
 		EncInboxCode: encInboxCode,
-		EncKey:       encKey,
+		EcdhPub:      ecdhPub,
 	})
 }
 
@@ -42,6 +44,11 @@ func (r PgxChatRepo) CreateChatInbox(inboxCode []byte) error {
 func (r PgxChatRepo) GetNewChats(username string) ([]db.GetNewUserInboxesRow, error) {
 	queries := db.New(r.Pool)
 	return queries.GetNewUserInboxes(r.Ctx, username)
+}
+
+func (r PgxChatRepo) DeleteNewChats(username string) error {
+	queries := db.New(r.Pool)
+	return queries.DeleteNewUserInboxes(r.Ctx, username)
 }
 
 func (r PgxChatRepo) SetInboxToken(inboxCode, token, encToken []byte) error {

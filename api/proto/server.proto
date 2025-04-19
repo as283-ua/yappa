@@ -28,9 +28,14 @@ message SendMsg {
 }
 
 message ChatInit {
-    string username = 1;
-    bytes inboxId = 2;
-    bytes enc_key = 3;
+    bytes inboxId = 1;
+}
+
+message ChatInitNotify {
+    string receiver = 1;
+    bytes encSender = 2;
+    bytes encInboxId = 3;
+    bytes ecdhPub = 4;
 }
 
 message HeartBeat {}
@@ -39,7 +44,8 @@ message ClientMessage {
     oneof payload {
         SendMsg send = 1;
         ChatInit init = 2;
-        HeartBeat hb = 3;
+        ChatInitNotify notify = 3;
+        HeartBeat hb = 4;
     }
 }
 

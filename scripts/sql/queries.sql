@@ -16,12 +16,16 @@ WHERE username = $1;
 
 ---- USER PERSONAL INBOXES
 -- name: NewUserInbox :exec
-INSERT INTO user_inboxes (username, enc_inbox_code, enc_key)
-VALUES ($1, $2, $3);
+INSERT INTO user_inboxes (username, enc_sender, enc_inbox_code, ecdh_pub)
+VALUES ($1, $2, $3, $4);
 
 -- name: GetNewUserInboxes :many
-SELECT enc_inbox_code, enc_key
+SELECT enc_inbox_code, ecdh_pub
 FROM user_inboxes
+WHERE username = $1;
+
+-- name: DeleteNewUserInboxes :exec
+DELETE FROM user_inboxes
 WHERE username = $1;
 
 

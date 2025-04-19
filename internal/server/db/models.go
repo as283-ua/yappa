@@ -25,6 +25,7 @@ type User struct {
 
 type UserInbox struct {
 	Username     string
+	EncSender    []byte
 	EncInboxCode []byte
-	EncKey       []byte
+	EcdhPub      []byte
 }

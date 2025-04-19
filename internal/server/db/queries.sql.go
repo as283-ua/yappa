@@ -67,6 +67,16 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const deleteNewUserInboxes = `-- name: DeleteNewUserInboxes :exec
+DELETE FROM user_inboxes
+WHERE username = $1
+`
+
+func (q *Queries) DeleteNewUserInboxes(ctx context.Context, username string) error {
+	_, err := q.db.Exec(ctx, deleteNewUserInboxes, username)
+	return err
+}
+
 const flushInbox = `-- name: FlushInbox :exec
 DELETE FROM chat_inbox_messages
 WHERE inbox_code = $1
@@ -117,14 +127,14 @@ func (q *Queries) GetMessages(ctx context.Context, inboxCode []byte) ([][]byte, 
 }
 
 const getNewUserInboxes = `-- name: GetNewUserInboxes :many
-SELECT enc_inbox_code, enc_key
+SELECT enc_inbox_code, ecdh_pub
 FROM user_inboxes
 WHERE username = $1
 `
 
 type GetNewUserInboxesRow struct {
 	EncInboxCode []byte
-	EncKey       []byte
+	EcdhPub      []byte
 }
 
 func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]GetNewUserInboxesRow, error) {
@@ -136,7 +146,7 @@ func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]Get
 	var items []GetNewUserInboxesRow
 	for rows.Next() {
 		var i GetNewUserInboxesRow
-		if err := rows.Scan(&i.EncInboxCode, &i.EncKey); err != nil {
+		if err := rows.Scan(&i.EncInboxCode, &i.EcdhPub); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -167,19 +177,25 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 }
 
 const newUserInbox = `-- name: NewUserInbox :exec
-INSERT INTO user_inboxes (username, enc_inbox_code, enc_key)
-VALUES ($1, $2, $3)
+INSERT INTO user_inboxes (username, enc_sender, enc_inbox_code, ecdh_pub)
+VALUES ($1, $2, $3, $4)
 `
 
 type NewUserInboxParams struct {
 	Username     string
+	EncSender    []byte
 	EncInboxCode []byte
-	EncKey       []byte
+	EcdhPub      []byte
 }
 
 // -- USER PERSONAL INBOXES
 func (q *Queries) NewUserInbox(ctx context.Context, arg NewUserInboxParams) error {
-	_, err := q.db.Exec(ctx, newUserInbox, arg.Username, arg.EncInboxCode, arg.EncKey)
+	_, err := q.db.Exec(ctx, newUserInbox,
+		arg.Username,
+		arg.EncSender,
+		arg.EncInboxCode,
+		arg.EcdhPub,
+	)
 	return err
 }
 

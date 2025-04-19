@@ -6,9 +6,11 @@ CREATE TABLE users (
 );
 
 CREATE TABLE user_inboxes (
-    username TEXT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    username TEXT NOT NULL,
+    enc_sender BYTEA NOT NULL,
     enc_inbox_code BYTEA NOT NULL,
-    enc_key BYTEA NOT NULL,
+    ecdh_pub BYTEA NOT NULL,
     FOREIGN KEY (username) REFERENCES users(username)
 );
 
