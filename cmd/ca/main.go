@@ -49,6 +49,8 @@ func main() {
 		log.Fatal("Error seting up server:", err)
 	}
 
+	os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "true")
+
 	fmt.Println("CA Server started on https://" + *addr)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)

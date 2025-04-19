@@ -51,6 +51,8 @@ func main() {
 
 	fmt.Println("Server started on https://" + *addr)
 
+	os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "true")
+
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

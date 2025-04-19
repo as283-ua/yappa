@@ -22,6 +22,8 @@ var (
 )
 
 func main() {
+	os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "true")
+
 	certDir = flag.String("certs", "certs/client/", "Path to certs directory")
 	caCert = flag.String("cacert", "certs/ca/ca.crt", "Yappa CA certificate")
 	serverHost = flag.String("server", "yappa.io:4433", "Yappa chat server ip and port")
