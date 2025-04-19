@@ -67,7 +67,7 @@ func (r *MockChatRepo) DeleteNewChats(username string) error {
 	return nil
 }
 
-func (r *MockChatRepo) SetInboxToken(inboxCode, token, encToken []byte) error {
+func (r *MockChatRepo) SetInboxToken(inboxCode, tokenHash, encToken, ecdhPub []byte) error {
 	idx := -1
 	for i, v := range r.chatInboxes {
 		if bytes.Equal(v.Code, inboxCode) {
@@ -76,7 +76,7 @@ func (r *MockChatRepo) SetInboxToken(inboxCode, token, encToken []byte) error {
 		}
 	}
 	if idx != -1 {
-		r.chatInboxes[idx].CurrentToken = token
+		r.chatInboxes[idx].CurrentTokenHash = tokenHash
 		r.chatInboxes[idx].EncToken = encToken
 	} else {
 		return errors.New("inbox not found")
@@ -88,8 +88,8 @@ func (r MockChatRepo) GetToken(inboxCode []byte) (db.GetInboxTokenRow, error) {
 	for _, v := range r.chatInboxes {
 		if bytes.Equal(v.Code, inboxCode) {
 			return db.GetInboxTokenRow{
-				CurrentToken: v.CurrentToken,
-				EncToken:     v.EncToken,
+				CurrentTokenHash: v.CurrentTokenHash,
+				EncToken:         v.EncToken,
 			}, nil
 		}
 	}

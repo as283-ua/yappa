@@ -3,6 +3,7 @@ package connection
 import (
 	"context"
 	"crypto/ecdh"
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -11,7 +12,9 @@ import (
 
 	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/server/auth"
+	"github.com/as283-ua/yappa/internal/server/chat"
 	"github.com/as283-ua/yappa/internal/server/logging"
+	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/quic-go/quic-go/http3"
 	"google.golang.org/protobuf/proto"
 )
@@ -96,9 +99,64 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 		case *gen.ClientMessage_Send:
 			chatSend := payload.Send
 			logger.Println(chatSend)
+			handleMsg(chatSend)
 		case *gen.ClientMessage_Hb:
 		default:
 			// Unknown or unset
 		}
 	}
+}
+
+func handleMsg(msg *gen.SendMsg) {
+	conn, ok := sessions[msg.Receiver]
+	if !ok {
+		saveToInbox(msg)
+	}
+	send := &gen.ReceiveMsg{
+		EncData: msg.Message,
+	}
+	sendBytes, _ := proto.Marshal(send)
+
+	(*conn).Write(sendBytes)
+}
+
+func saveToInbox(msg *gen.SendMsg) error {
+	receiver, err := auth.Repo.GetUserByUsername(context.Background(), msg.Receiver)
+	if err != nil {
+		logging.GetLogger().Println("Get user error:", err)
+		return err
+	}
+	ecdhReceiverPub, err := ecdh.X25519().NewPublicKey(receiver.EcdhTemp)
+	if err != nil {
+		logging.GetLogger().Println("Get user error:", err)
+		return err
+	}
+	ecdhServerTmp, _ := ecdh.X25519().GenerateKey(rand.Reader)
+	key, err := ecdhServerTmp.ECDH(ecdhReceiverPub)
+	if err != nil {
+		logging.GetLogger().Println("ECDH error:", err)
+		return err
+	}
+
+	token := make([]byte, 32)
+	rand.Read(token)
+
+	tokenEnc, err := common.Encrypt(token, key)
+	if err != nil {
+		logging.GetLogger().Println("AES error enc:", err)
+		return err
+	}
+
+	err = chat.Repo.SetInboxToken(msg.InboxId, common.Hash(token), tokenEnc, ecdhServerTmp.PublicKey().Bytes())
+	if err != nil {
+		logging.GetLogger().Println("DB error:", err)
+		return err
+	}
+
+	err = chat.Repo.AddMessage(msg.InboxId, msg.Message)
+	if err != nil {
+		logging.GetLogger().Println("DB error:", err)
+		return err
+	}
+	return nil
 }

@@ -5,9 +5,10 @@
 package db
 
 type ChatInbox struct {
-	Code         []byte
-	CurrentToken []byte
-	EncToken     []byte
+	Code             []byte
+	CurrentTokenHash []byte
+	EncToken         []byte
+	ServerEcdhPub    []byte
 }
 
 type ChatInboxMessage struct {

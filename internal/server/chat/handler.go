@@ -8,6 +8,7 @@ import (
 
 	"github.com/as283-ua/yappa/api/gen"
 	"github.com/as283-ua/yappa/internal/server/logging"
+	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 )
@@ -162,7 +163,7 @@ func GetNewMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if bytes.Equal(token.CurrentToken, getMsgs.Token) {
+	if bytes.Equal(token.CurrentTokenHash, common.Hash(getMsgs.Token)) {
 		http.Error(w, "Bad token", http.StatusUnauthorized)
 		return
 	}

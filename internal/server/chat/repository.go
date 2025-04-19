@@ -12,7 +12,7 @@ type ChatRepo interface {
 	CreateChatInbox(inboxCode []byte) error
 	GetNewChats(username string) ([]db.GetNewUserInboxesRow, error)
 	DeleteNewChats(username string) error
-	SetInboxToken(inboxCode, token, encToken []byte) error
+	SetInboxToken(inboxCode, tokenHash, encToken, ecdhPub []byte) error
 	GetToken(inboxCode []byte) (db.GetInboxTokenRow, error)
 	AddMessage(inboxCode, encMsg []byte) error
 	GetMessages(inboxCode []byte) ([][]byte, error)
@@ -51,12 +51,13 @@ func (r PgxChatRepo) DeleteNewChats(username string) error {
 	return queries.DeleteNewUserInboxes(r.Ctx, username)
 }
 
-func (r PgxChatRepo) SetInboxToken(inboxCode, token, encToken []byte) error {
+func (r PgxChatRepo) SetInboxToken(inboxCode, tokenHash, encToken, ecdhPub []byte) error {
 	queries := db.New(r.Pool)
 	return queries.SetToken(r.Ctx, db.SetTokenParams{
-		Code:         inboxCode,
-		CurrentToken: token,
-		EncToken:     encToken,
+		Code:             inboxCode,
+		CurrentTokenHash: tokenHash,
+		EncToken:         encToken,
+		ServerEcdhPub:    ecdhPub,
 	})
 }
 

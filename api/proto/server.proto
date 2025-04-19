@@ -24,7 +24,7 @@ message ConfirmRegistration {
 message SendMsg {
     string receiver = 1;
     bytes inboxId = 2;
-    string message = 3;
+    bytes message = 3;
 }
 
 message ChatInit {
@@ -50,7 +50,7 @@ message ClientMessage {
 }
 
 message ReceiveMsg {
-    bytes enc_data = 1;
+    bytes encData = 1;
 }
 
 message ServerMessage {

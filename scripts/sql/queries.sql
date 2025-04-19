@@ -31,16 +31,16 @@ WHERE username = $1;
 
 ---- CHAT INBOXES
 -- name: CreateInbox :exec
-INSERT INTO chat_inboxes (code, current_token, enc_token) 
+INSERT INTO chat_inboxes (code, current_token_hash, enc_token) 
 VALUES ($1, NULL, NULl);
 
 -- name: SetToken :exec
 UPDATE chat_inboxes
-SET current_token = $2, enc_token = $3
+SET current_token_hash = $2, enc_token = $3, server_ecdh_pub = $4
 WHERE code = $1;
 
 -- name: GetInboxToken :one
-SELECT current_token, enc_token
+SELECT current_token_hash, enc_token
 FROM chat_inboxes
 WHERE code = $1;
 

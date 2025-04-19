@@ -16,8 +16,9 @@ CREATE TABLE user_inboxes (
 
 CREATE TABLE chat_inboxes (
     code BYTEA PRIMARY KEY,
-    current_token BYTEA,
-    enc_token BYTEA
+    current_token_hash BYTEA,
+    enc_token BYTEA,
+    server_ecdh_pub BYTEA
 );
 
 CREATE TABLE chat_inbox_messages (
