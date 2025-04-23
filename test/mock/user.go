@@ -28,23 +28,12 @@ func (r MockUserRepo) GetUserByUsername(ctx context.Context, user string) (db.Us
 	return u, nil
 }
 
-func (r *MockUserRepo) CreateUser(ctx context.Context, user, cert string) error {
+func (r *MockUserRepo) CreateUser(ctx context.Context, user, cert string, pubKeyExchange []byte) error {
 	_, err := r.GetUserByUsername(ctx, user)
 	if err == nil {
 		return errors.New("user already exists")
 	}
-	r.users[user] = db.User{ID: int32(r.serial), Username: user, Certificate: cert}
+	r.users[user] = db.User{ID: int32(r.serial), Username: user, Certificate: cert, PubKeyExchange: pubKeyExchange}
 	r.serial++
-	return nil
-}
-
-func (r *MockUserRepo) ChangeEcdhTemp(ctx context.Context, username string, ecdh []byte) error {
-	user, err := r.GetUserByUsername(ctx, username)
-	if err != nil {
-		return errors.New("user doesn't exist")
-	}
-
-	user.EcdhTemp = ecdh
-	r.users[username] = user
 	return nil
 }

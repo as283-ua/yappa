@@ -25,25 +25,9 @@ func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
 	return err
 }
 
-const changeEcdhTemp = `-- name: ChangeEcdhTemp :exec
-UPDATE users
-SET ecdh_temp = $2
-WHERE username = $1
-`
-
-type ChangeEcdhTempParams struct {
-	Username string
-	EcdhTemp []byte
-}
-
-func (q *Queries) ChangeEcdhTemp(ctx context.Context, arg ChangeEcdhTempParams) error {
-	_, err := q.db.Exec(ctx, changeEcdhTemp, arg.Username, arg.EcdhTemp)
-	return err
-}
-
 const createInbox = `-- name: CreateInbox :exec
-INSERT INTO chat_inboxes (code, current_token_hash, enc_token) 
-VALUES ($1, NULL, NULl)
+INSERT INTO chat_inboxes (code, current_token_hash, enc_token, key_exchange_data) 
+VALUES ($1, NULL, NULL, NULL)
 `
 
 // -- CHAT INBOXES
@@ -53,17 +37,18 @@ func (q *Queries) CreateInbox(ctx context.Context, code []byte) error {
 }
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (username, certificate) 
-VALUES ($1, $2)
+INSERT INTO users (username, certificate, pub_key_exchange) 
+VALUES ($1, $2, $3)
 `
 
 type CreateUserParams struct {
-	Username    string
-	Certificate string
+	Username       string
+	Certificate    string
+	PubKeyExchange []byte
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.Exec(ctx, createUser, arg.Username, arg.Certificate)
+	_, err := q.db.Exec(ctx, createUser, arg.Username, arg.Certificate, arg.PubKeyExchange)
 	return err
 }
 
@@ -88,7 +73,7 @@ func (q *Queries) FlushInbox(ctx context.Context, inboxCode []byte) error {
 }
 
 const getInboxToken = `-- name: GetInboxToken :one
-SELECT current_token_hash, enc_token
+SELECT current_token_hash, enc_token, key_exchange_data
 FROM chat_inboxes
 WHERE code = $1
 `
@@ -96,12 +81,13 @@ WHERE code = $1
 type GetInboxTokenRow struct {
 	CurrentTokenHash []byte
 	EncToken         []byte
+	KeyExchangeData  []byte
 }
 
 func (q *Queries) GetInboxToken(ctx context.Context, code []byte) (GetInboxTokenRow, error) {
 	row := q.db.QueryRow(ctx, getInboxToken, code)
 	var i GetInboxTokenRow
-	err := row.Scan(&i.CurrentTokenHash, &i.EncToken)
+	err := row.Scan(&i.CurrentTokenHash, &i.EncToken, &i.KeyExchangeData)
 	return i, err
 }
 
@@ -132,15 +118,15 @@ func (q *Queries) GetMessages(ctx context.Context, inboxCode []byte) ([][]byte, 
 }
 
 const getNewUserInboxes = `-- name: GetNewUserInboxes :many
-SELECT enc_sender, enc_inbox_code, ecdh_pub
+SELECT enc_sender, enc_inbox_code, key_exchange_data
 FROM user_inboxes
 WHERE username = $1
 `
 
 type GetNewUserInboxesRow struct {
-	EncSender    []byte
-	EncInboxCode []byte
-	EcdhPub      []byte
+	EncSender       []byte
+	EncInboxCode    []byte
+	KeyExchangeData []byte
 }
 
 func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]GetNewUserInboxesRow, error) {
@@ -152,7 +138,7 @@ func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]Get
 	var items []GetNewUserInboxesRow
 	for rows.Next() {
 		var i GetNewUserInboxesRow
-		if err := rows.Scan(&i.EncSender, &i.EncInboxCode, &i.EcdhPub); err != nil {
+		if err := rows.Scan(&i.EncSender, &i.EncInboxCode, &i.KeyExchangeData); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -164,7 +150,7 @@ func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]Get
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, certificate, ecdh_temp
+SELECT id, username, certificate, pub_key_exchange
 FROM users
 WHERE username = $1
 `
@@ -177,21 +163,21 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.ID,
 		&i.Username,
 		&i.Certificate,
-		&i.EcdhTemp,
+		&i.PubKeyExchange,
 	)
 	return i, err
 }
 
 const newUserInbox = `-- name: NewUserInbox :exec
-INSERT INTO user_inboxes (username, enc_sender, enc_inbox_code, ecdh_pub)
+INSERT INTO user_inboxes (username, enc_sender, enc_inbox_code, key_exchange_data)
 VALUES ($1, $2, $3, $4)
 `
 
 type NewUserInboxParams struct {
-	Username     string
-	EncSender    []byte
-	EncInboxCode []byte
-	EcdhPub      []byte
+	Username        string
+	EncSender       []byte
+	EncInboxCode    []byte
+	KeyExchangeData []byte
 }
 
 // -- USER PERSONAL INBOXES
@@ -200,14 +186,14 @@ func (q *Queries) NewUserInbox(ctx context.Context, arg NewUserInboxParams) erro
 		arg.Username,
 		arg.EncSender,
 		arg.EncInboxCode,
-		arg.EcdhPub,
+		arg.KeyExchangeData,
 	)
 	return err
 }
 
 const setToken = `-- name: SetToken :exec
 UPDATE chat_inboxes
-SET current_token_hash = $2, enc_token = $3, server_ecdh_pub = $4
+SET current_token_hash = $2, enc_token = $3, key_exchange_data = $4
 WHERE code = $1
 `
 
@@ -215,7 +201,7 @@ type SetTokenParams struct {
 	Code             []byte
 	CurrentTokenHash []byte
 	EncToken         []byte
-	ServerEcdhPub    []byte
+	KeyExchangeData  []byte
 }
 
 func (q *Queries) SetToken(ctx context.Context, arg SetTokenParams) error {
@@ -223,7 +209,7 @@ func (q *Queries) SetToken(ctx context.Context, arg SetTokenParams) error {
 		arg.Code,
 		arg.CurrentTokenHash,
 		arg.EncToken,
-		arg.ServerEcdhPub,
+		arg.KeyExchangeData,
 	)
 	return err
 }

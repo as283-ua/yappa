@@ -31,13 +31,13 @@ func (r MockChatRepo) GetUserInboxes() map[string][]db.UserInbox {
 	return r.userInboxes
 }
 
-func (r *MockChatRepo) ShareChatInbox(username string, encSender, encInboxCode, ecdhPub []byte) error {
+func (r *MockChatRepo) ShareChatInbox(username string, encSender, encInboxCode, keyExchangeData []byte) error {
 	r.userInboxes[username] = append(r.userInboxes[username], db.UserInbox{
-		ID:           int32(r.userInboxSerial),
-		Username:     username,
-		EncSender:    encSender,
-		EncInboxCode: encInboxCode,
-		EcdhPub:      ecdhPub,
+		ID:              int32(r.userInboxSerial),
+		Username:        username,
+		EncSender:       encSender,
+		EncInboxCode:    encInboxCode,
+		KeyExchangeData: keyExchangeData,
 	})
 	r.userInboxSerial++
 	return nil
@@ -54,9 +54,9 @@ func (r MockChatRepo) GetNewChats(username string) ([]db.GetNewUserInboxesRow, e
 	result := []db.GetNewUserInboxesRow{}
 	for _, v := range r.userInboxes[username] {
 		result = append(result, db.GetNewUserInboxesRow{
-			EncInboxCode: v.EncInboxCode,
-			EncSender:    v.EncSender,
-			EcdhPub:      v.EcdhPub,
+			EncInboxCode:    v.EncInboxCode,
+			EncSender:       v.EncSender,
+			KeyExchangeData: v.KeyExchangeData,
 		})
 	}
 	return result, nil
@@ -67,7 +67,7 @@ func (r *MockChatRepo) DeleteNewChats(username string) error {
 	return nil
 }
 
-func (r *MockChatRepo) SetInboxToken(inboxCode, tokenHash, encToken, ecdhPub []byte) error {
+func (r *MockChatRepo) SetInboxToken(inboxCode, tokenHash, encToken, keyExchangeData []byte) error {
 	idx := -1
 	for i, v := range r.chatInboxes {
 		if bytes.Equal(v.Code, inboxCode) {

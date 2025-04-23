@@ -132,7 +132,7 @@ func RegisterComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = Repo.CreateUser(r.Context(), confirmation.User, string(confirmation.Cert))
+	err = Repo.CreateUser(r.Context(), confirmation.User, string(confirmation.Cert), confirmation.PubKeyExchange)
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		log.Println("Error creating user in DB:", err)

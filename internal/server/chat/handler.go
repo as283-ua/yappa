@@ -57,7 +57,7 @@ func NotifyChatInbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = Repo.ShareChatInbox(notify.Receiver, notify.EncSender, notify.EncInboxId, notify.EcdhPub)
+	err = Repo.ShareChatInbox(notify.Receiver, notify.EncSender, notify.EncInboxId, notify.KeyExchangeData)
 	if err != nil {
 		logger.Println("DB error:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -84,7 +84,7 @@ func GetNewChats(w http.ResponseWriter, r *http.Request) {
 		chats.Chats = append(chats.Chats, &gen.NewChat{
 			EncSender:    v.EncSender,
 			EncInboxCode: v.EncInboxCode,
-			EcdhPub:      v.EcdhPub,
+			EcdhPub:      v.KeyExchangeData,
 		})
 	}
 

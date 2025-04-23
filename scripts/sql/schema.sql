@@ -2,7 +2,7 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     certificate TEXT NOT NULL UNIQUE,
-    ecdh_temp BYTEA
+    pub_key_exchange BYTEA
 );
 
 CREATE TABLE user_inboxes (
@@ -10,7 +10,7 @@ CREATE TABLE user_inboxes (
     username TEXT NOT NULL,
     enc_sender BYTEA NOT NULL,
     enc_inbox_code BYTEA NOT NULL,
-    ecdh_pub BYTEA NOT NULL,
+    key_exchange_data BYTEA NOT NULL,
     FOREIGN KEY (username) REFERENCES users(username)
 );
 
@@ -18,7 +18,7 @@ CREATE TABLE chat_inboxes (
     code BYTEA PRIMARY KEY,
     current_token_hash BYTEA,
     enc_token BYTEA,
-    server_ecdh_pub BYTEA
+    key_exchange_data BYTEA NOT NULL
 );
 
 CREATE TABLE chat_inbox_messages (

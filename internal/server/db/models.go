@@ -8,7 +8,7 @@ type ChatInbox struct {
 	Code             []byte
 	CurrentTokenHash []byte
 	EncToken         []byte
-	ServerEcdhPub    []byte
+	KeyExchangeData  []byte
 }
 
 type ChatInboxMessage struct {
@@ -18,16 +18,16 @@ type ChatInboxMessage struct {
 }
 
 type User struct {
-	ID          int32
-	Username    string
-	Certificate string
-	EcdhTemp    []byte
+	ID             int32
+	Username       string
+	Certificate    string
+	PubKeyExchange []byte
 }
 
 type UserInbox struct {
-	ID           int32
-	Username     string
-	EncSender    []byte
-	EncInboxCode []byte
-	EcdhPub      []byte
+	ID              int32
+	Username        string
+	EncSender       []byte
+	EncInboxCode    []byte
+	KeyExchangeData []byte
 }

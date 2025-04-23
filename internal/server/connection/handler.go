@@ -2,7 +2,7 @@ package connection
 
 import (
 	"context"
-	"crypto/ecdh"
+	"crypto/mlkem"
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
@@ -49,18 +49,6 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 	_, err := auth.Repo.GetUserByUsername(context.Background(), username)
 	if err == nil {
 		http.Error(w, "Invalid user", http.StatusBadRequest)
-		return
-	}
-
-	ecdhK, ok := r.Context().Value(EcdhCtxKey).(*ecdh.PublicKey)
-	if !ok {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	err = auth.Repo.ChangeEcdhTemp(context.Background(), username, ecdhK.Bytes())
-	if err != nil {
-		logger.Println(err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -126,17 +114,12 @@ func saveToInbox(msg *gen.SendMsg) error {
 		logging.GetLogger().Println("Get user error:", err)
 		return err
 	}
-	ecdhReceiverPub, err := ecdh.X25519().NewPublicKey(receiver.EcdhTemp)
+	kybKey, err := mlkem.NewEncapsulationKey1024(receiver.PubKeyExchange)
 	if err != nil {
-		logging.GetLogger().Println("Get user error:", err)
+		logging.GetLogger().Println("Kyber encapsulation parse error:", err)
 		return err
 	}
-	ecdhServerTmp, _ := ecdh.X25519().GenerateKey(rand.Reader)
-	key, err := ecdhServerTmp.ECDH(ecdhReceiverPub)
-	if err != nil {
-		logging.GetLogger().Println("ECDH error:", err)
-		return err
-	}
+	key, cipherText := kybKey.Encapsulate()
 
 	token := make([]byte, 32)
 	rand.Read(token)
@@ -147,7 +130,7 @@ func saveToInbox(msg *gen.SendMsg) error {
 		return err
 	}
 
-	err = chat.Repo.SetInboxToken(msg.InboxId, common.Hash(token), tokenEnc, ecdhServerTmp.PublicKey().Bytes())
+	err = chat.Repo.SetInboxToken(msg.InboxId, common.Hash(token), tokenEnc, cipherText)
 	if err != nil {
 		logging.GetLogger().Println("DB error:", err)
 		return err

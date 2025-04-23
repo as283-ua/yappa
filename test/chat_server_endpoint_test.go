@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdh"
+	"crypto/mlkem"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
@@ -334,22 +335,20 @@ func TestChatInit(t *testing.T) {
 			t.FailNow()
 		}
 		defer resp.Body.Close()
-		ecdhReceiver, _ := ecdh.X25519().GenerateKey(rand.Reader)
-		ecdhSender, _ := ecdh.X25519().GenerateKey(rand.Reader)
+		kyberReceiver, _ := mlkem.GenerateKey1024()
 
 		receiverUsername := "Receiver"
-		auth.Repo.CreateUser(context.Background(), receiverUsername, "")
-		auth.Repo.ChangeEcdhTemp(context.Background(), receiverUsername, ecdhReceiver.PublicKey().Bytes())
-		aesK, _ := ecdhSender.ECDH(ecdhReceiver.PublicKey())
+		auth.Repo.CreateUser(context.Background(), receiverUsername, "", kyberReceiver.EncapsulationKey().Bytes())
+		aesK, cipherText := kyberReceiver.EncapsulationKey().Encapsulate()
 
 		encSender, _ := Encrypt([]byte("Sender"), aesK)
 		encInboxId, _ := Encrypt(inboxId, aesK)
 
 		regRequest2 := &gen.ChatInitNotify{
-			Receiver:   receiverUsername,
-			EcdhPub:    ecdhSender.PublicKey().Bytes(),
-			EncSender:  encSender,
-			EncInboxId: encInboxId,
+			Receiver:        receiverUsername,
+			KeyExchangeData: cipherText,
+			EncSender:       encSender,
+			EncInboxId:      encInboxId,
 		}
 
 		data, _ = proto.Marshal(regRequest2)
@@ -365,11 +364,10 @@ func TestChatInit(t *testing.T) {
 			t.FailNow()
 		}
 		assert.Equal(t, 1, len(newChats))
-		ecdhPub, err := ecdh.X25519().NewPublicKey(newChats[0].EcdhPub)
+		aesK2, err := kyberReceiver.Decapsulate(newChats[0].KeyExchangeData)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		aesK2, _ := ecdhReceiver.ECDH(ecdhPub)
 
 		inboxIdDec, err := Decrypt(newChats[0].EncInboxCode, aesK2)
 		if !assert.NoError(t, err) {

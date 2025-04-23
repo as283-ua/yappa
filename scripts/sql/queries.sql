@@ -1,26 +1,21 @@
 ---- AUTH
 -- name: GetUserByUsername :one
-SELECT id, username, certificate, ecdh_temp
+SELECT id, username, certificate, pub_key_exchange
 FROM users
 WHERE username = $1;
 
 -- name: CreateUser :exec
-INSERT INTO users (username, certificate) 
-VALUES ($1, $2);
-
--- name: ChangeEcdhTemp :exec
-UPDATE users
-SET ecdh_temp = $2
-WHERE username = $1;
+INSERT INTO users (username, certificate, pub_key_exchange) 
+VALUES ($1, $2, $3);
 
 
 ---- USER PERSONAL INBOXES
 -- name: NewUserInbox :exec
-INSERT INTO user_inboxes (username, enc_sender, enc_inbox_code, ecdh_pub)
+INSERT INTO user_inboxes (username, enc_sender, enc_inbox_code, key_exchange_data)
 VALUES ($1, $2, $3, $4);
 
 -- name: GetNewUserInboxes :many
-SELECT enc_sender, enc_inbox_code, ecdh_pub
+SELECT enc_sender, enc_inbox_code, key_exchange_data
 FROM user_inboxes
 WHERE username = $1;
 
@@ -31,16 +26,16 @@ WHERE username = $1;
 
 ---- CHAT INBOXES
 -- name: CreateInbox :exec
-INSERT INTO chat_inboxes (code, current_token_hash, enc_token) 
-VALUES ($1, NULL, NULl);
+INSERT INTO chat_inboxes (code, current_token_hash, enc_token, key_exchange_data) 
+VALUES ($1, NULL, NULL, NULL);
 
 -- name: SetToken :exec
 UPDATE chat_inboxes
-SET current_token_hash = $2, enc_token = $3, server_ecdh_pub = $4
+SET current_token_hash = $2, enc_token = $3, key_exchange_data = $4
 WHERE code = $1;
 
 -- name: GetInboxToken :one
-SELECT current_token_hash, enc_token
+SELECT current_token_hash, enc_token, key_exchange_data
 FROM chat_inboxes
 WHERE code = $1;
 

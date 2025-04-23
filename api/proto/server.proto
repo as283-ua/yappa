@@ -18,6 +18,7 @@ message ConfirmRegistration {
     string user = 1;
     bytes token = 2;
     bytes cert  = 3;
+    bytes pubKeyExchange = 4;
 }
 
 // chat message types
@@ -35,7 +36,7 @@ message ChatInitNotify {
     string receiver = 1;
     bytes encSender = 2;
     bytes encInboxId = 3;
-    bytes ecdhPub = 4;
+    bytes keyExchangeData = 4;
 }
 
 message HeartBeat {}
@@ -60,9 +61,9 @@ message ServerMessage {
 }
 
 message NewChat {
-    bytes EncSender = 1;
-	bytes EncInboxCode = 2;
-	bytes EcdhPub = 3;
+    bytes encSender = 1;
+	bytes encInboxCode = 2;
+	bytes ecdhPub = 3;
 }
 
 message ListNewChats {
