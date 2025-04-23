@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"crypto/mlkem"
 	"errors"
 	"fmt"
 	"io"
@@ -117,11 +118,12 @@ func (c RegistrationClient) CertificateSignatureRequest(allowUser *gen.AllowUser
 	return certResponse, nil
 }
 
-func (c RegistrationClient) CompleteRegistration(username string, certResponse *gen.CertResponse) error {
+func (c RegistrationClient) CompleteRegistration(username string, certResponse *gen.CertResponse, kyberKey *mlkem.DecapsulationKey1024) error {
 	confirmation := &gen.ConfirmRegistration{
-		User:  username,
-		Token: certResponse.Token,
-		Cert:  certResponse.Cert,
+		User:           username,
+		Token:          certResponse.Token,
+		Cert:           certResponse.Cert,
+		PubKeyExchange: kyberKey.EncapsulationKey().Bytes(),
 	}
 
 	data, err := proto.Marshal(confirmation)

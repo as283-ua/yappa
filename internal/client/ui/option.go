@@ -30,3 +30,13 @@ func (c GoToRegister) Select() (tea.Model, tea.Cmd) {
 func (c GoToRegister) String() string {
 	return "Register!"
 }
+
+type GoToUsersPage struct{}
+
+func (c GoToUsersPage) Select() (tea.Model, tea.Cmd) {
+	return NewUsersPage(), nil
+}
+
+func (c GoToUsersPage) String() string {
+	return "My chats"
+}

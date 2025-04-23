@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"crypto/mlkem"
 	"errors"
 	"fmt"
 	"log"
@@ -160,6 +161,7 @@ func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			settings.CliSettings.CertDir+"yappa.key",
 			settings.CliSettings.CertDir+"yappa.crt")
 		m.errorMessage = "Good job, you registered!"
+		model = NewMainPage()
 	}
 
 	if model == nil {
@@ -235,14 +237,56 @@ func completeRegistration(username string, certResponse *gen.CertResponse) tea.C
 			return err
 		}
 
+		k, err := generateAndSaveKyberKeyPair()
+		if err != nil {
+			return err
+		}
+
 		yc := service.RegistrationClient{Client: c}
-		err = yc.CompleteRegistration(username, certResponse)
+		err = yc.CompleteRegistration(username, certResponse, k)
 		if err != nil {
 			return err
 		}
 
 		return RegistrationSuccess{}
 	}
+}
+
+func generateAndSaveKyberKeyPair() (*mlkem.DecapsulationKey1024, error) {
+	key, err := mlkem.GenerateKey1024()
+	if err != nil {
+		log.Println("Kyber generate error: ", err)
+		return nil, errors.New("could not save key")
+	}
+
+	key.Bytes()
+	keyFile, err := os.OpenFile(settings.CliSettings.CertDir+"dk.key", os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Println("Create file error: ", err)
+		return nil, errors.New("could not save key")
+	}
+	defer keyFile.Close()
+	pubFile, err := os.OpenFile(settings.CliSettings.CertDir+"dk.pub", os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Println("Public key create error: ", err)
+		return nil, errors.New("could not save key")
+	}
+	defer pubFile.Close()
+
+	_, err = keyFile.Write(key.Bytes())
+	if err != nil {
+		log.Println("Pem write error: ", err)
+		os.Remove(settings.CliSettings.CertDir + "dk.key")
+		return nil, errors.New("could not save key")
+	}
+	_, err = pubFile.Write(key.EncapsulationKey().Bytes())
+	if err != nil {
+		log.Println("Pem write error: ", err)
+		os.Remove(settings.CliSettings.CertDir + "dk.pub")
+		return nil, errors.New("could not save key")
+	}
+
+	return key, nil
 }
 
 func savePemFile(pemBytes []byte, file string) error {

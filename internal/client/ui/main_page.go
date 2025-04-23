@@ -69,6 +69,8 @@ func NewMainPage() MainPage {
 
 	if !hasCert() {
 		options = append(options, GoToRegister{})
+	} else {
+		options = append(options, GoToUsersPage{})
 	}
 
 	options = append(options, Exit{})

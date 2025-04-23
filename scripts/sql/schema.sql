@@ -1,8 +1,13 @@
+DROP TABLE IF EXISTS user_inboxes CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS chat_inboxes CASCADE;
+DROP TABLE IF EXISTS chat_inbox_messages CASCADE;
+
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     certificate TEXT NOT NULL UNIQUE,
-    pub_key_exchange BYTEA
+    pub_key_exchange BYTEA NOT NULL
 );
 
 CREATE TABLE user_inboxes (
