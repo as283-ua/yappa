@@ -23,9 +23,10 @@ message ConfirmRegistration {
 
 // chat message types
 message SendMsg {
-    string receiver = 1;
-    bytes inboxId = 2;
-    bytes message = 3;
+    uint64 serial = 1;
+    string receiver = 2;
+    bytes inboxId = 3;
+    bytes message = 4;
 }
 
 message ChatInit {
@@ -34,9 +35,11 @@ message ChatInit {
 
 message ChatInitNotify {
     string receiver = 1;
-    bytes encSender = 2;
-    bytes encInboxId = 3;
-    bytes keyExchangeData = 4;
+    bytes encSerial = 2;
+    bytes encSender = 3;
+    bytes encSignedSender = 4;
+    bytes encInboxId = 5;
+    bytes keyExchangeData = 6;
 }
 
 message HeartBeat {}
@@ -44,26 +47,32 @@ message HeartBeat {}
 message ClientMessage {
     oneof payload {
         SendMsg send = 1;
-        ChatInit init = 2;
-        ChatInitNotify notify = 3;
-        HeartBeat hb = 4;
+        HeartBeat hb = 2;
     }
-}
-
-message ReceiveMsg {
-    bytes encData = 1;
 }
 
 message ServerMessage {
     oneof payload {
-        SendMsg send = 1;
+        ReceiveMsg send = 1;
     }
 }
+
+message ReceiveMsg {
+    bytes inboxId = 1;
+    uint64 serial = 2;
+    bytes encData = 3;
+}
+
+message InboxToken {
+	bytes encToken = 1;
+	bytes keyExchangeData = 2;  
+}
+
 
 message NewChat {
     bytes encSender = 1;
 	bytes encInboxCode = 2;
-	bytes ecdhPub = 3;
+	bytes keyExchangeData = 3;
 }
 
 message ListNewChats {

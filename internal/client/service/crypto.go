@@ -17,7 +17,7 @@ type PrivKeyBundle struct {
 }
 
 func GeneratePrivKey() (*PrivKeyBundle, error) {
-	privKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		log.Println("Crypto error:", err)
 		return nil, errors.New("crypto error")

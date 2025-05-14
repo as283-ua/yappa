@@ -14,6 +14,8 @@ CREATE TABLE user_inboxes (
     id SERIAL PRIMARY KEY,
     username TEXT NOT NULL,
     enc_sender BYTEA NOT NULL,
+    enc_signature BYTEA NOT NULL,
+    enc_serial BYTEA NOT NULL,
     enc_inbox_code BYTEA NOT NULL,
     key_exchange_data BYTEA NOT NULL,
     FOREIGN KEY (username) REFERENCES users(username)
