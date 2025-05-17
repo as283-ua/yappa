@@ -6,21 +6,54 @@ option go_package = "github.com/as283-ua/yappa/api/gen/client";
 
 message ChatMessage {
     string msg = 1;
-    bytes msgSignature = 2;
 }
 
 message KeyRotation {
-	bytes keyExchangeData = 1;
-    bytes signedKeyExchange = 2;
+	bytes key_exchangeData = 1;
+    bytes signature = 2;
+}
+
+message GroupKeyRotation {
+    bytes enc_key = 1;
+	bytes key_exchangeData = 2;
+    bytes signature = 3;
+}
+
+message GroupData {
+    string name = 1;
+    uint64 current_serial = 2;
+    bytes key = 3;
+    repeated PeerData peers = 4;
+    repeated string admins = 5;
+}
+
+message AddMember {
+    string added_user = 1;
+    bytes signature = 2;
+}
+
+message KickUser {
+    string kicked_user = 1;
+    bytes signature = 2;
+}
+
+message LeaveGroup {
+    bytes signature = 1;
 }
 
 message ClientEvent {
-    uint64 serial = 1;
-    uint64 timestamp = 2;
-    string sender = 3;
+    uint64 timestamp = 1;
+    string sender = 2;
     oneof payload {
-        ChatMessage message = 4;
-        KeyRotation keyRotation = 5;
+        ChatMessage message = 3;
+        KeyRotation key_rotation = 4;
+
+        // Group chat events
+        GroupData group_data = 5;
+        GroupKeyRotation group_key_rotation = 6;
+        AddMember add_member = 7;
+        LeaveGroup leave_group = 8;
+        KickUser kick_user = 9;
     }
 }
 
@@ -28,6 +61,7 @@ message PeerData {
     string username = 1;
     bytes key_exchange = 2;
     bytes cert = 3;
+    bytes inbox_id = 4;
 }
 
 message Chat {
@@ -37,6 +71,13 @@ message Chat {
     PeerData peer = 4;
 }
 
+message GroupChat {
+    GroupData group = 1;
+    repeated ClientEvent events = 2;
+}
+
 message SaveState {
     repeated Chat chats = 1;
+    repeated GroupChat group_chats = 2;
 }
+
