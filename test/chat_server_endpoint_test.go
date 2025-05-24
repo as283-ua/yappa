@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/as283-ua/yappa/api/gen/ca"
 	serv_proto "github.com/as283-ua/yappa/api/gen/server"
@@ -21,6 +22,7 @@ import (
 	"github.com/as283-ua/yappa/internal/server/auth"
 	"github.com/as283-ua/yappa/internal/server/chat"
 	"github.com/as283-ua/yappa/internal/server/settings"
+	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/as283-ua/yappa/test/mock"
 	"github.com/quic-go/quic-go/http3"
 	"github.com/stretchr/testify/assert"
@@ -184,9 +186,7 @@ func TestRequireCertClient(t *testing.T) {
 func TestConnection(t *testing.T) {
 	setup()
 
-	t.Run("send_init_chat_type", func(t *testing.T) {
-		t.Skip()
-
+	t.Run("send_chat_msg_type", func(t *testing.T) {
 		// not very reliable test, just proof of concept
 		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
 		u, err := url.Parse(serverURL)
@@ -195,7 +195,7 @@ func TestConnection(t *testing.T) {
 		}
 		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
 
-		str, err := Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
+		str, err := common.Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
 		if !assert.NoError(t, err) {
 			return
 		}
@@ -217,10 +217,45 @@ func TestConnection(t *testing.T) {
 		messageLen := len(m)
 		lenBytes := make([]byte, 4)
 		binary.BigEndian.PutUint32(lenBytes, uint32(messageLen))
-
 		str.Write(append(lenBytes, m...))
-		// timer := time.NewTimer(5 * time.Minute)
-		// <-timer.C
+
+		timer := time.NewTimer(1 * time.Second)
+		<-timer.C
+	})
+
+	t.Run("send_hb", func(t *testing.T) {
+		// not very reliable test, just proof of concept
+		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
+		u, err := url.Parse(serverURL)
+		if !assert.NoError(t, err) {
+			return
+		}
+		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
+
+		str, err := common.Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		defer str.Close()
+
+		msg := &serv_proto.ClientMessage{
+			Payload: &serv_proto.ClientMessage_Hb{},
+		}
+
+		m, err := proto.Marshal(msg)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		// length of message at the start of the frame
+		messageLen := len(m)
+		lenBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(lenBytes, uint32(messageLen))
+		str.Write(append(lenBytes, m...))
+
+		timer := time.NewTimer(1 * time.Second)
+		<-timer.C
 	})
 }
 

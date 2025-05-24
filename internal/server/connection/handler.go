@@ -89,6 +89,7 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 			logger.Println(chatSend)
 			handleMsg(chatSend)
 		case *server.ClientMessage_Hb:
+			logger.Println("Heartbeat")
 		default:
 			// Unknown or unset
 		}
@@ -99,6 +100,7 @@ func handleMsg(msg *server.SendMsg) {
 	conn, ok := sessions[msg.Receiver]
 	if !ok {
 		saveToInbox(msg)
+		return
 	}
 	send := &server.ReceiveMsg{
 		EncData: msg.Message,
