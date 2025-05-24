@@ -32,10 +32,12 @@ func (c GoToRegister) String() string {
 	return "Register!"
 }
 
-type GoToUsersPage struct{}
+type GoToUsersPage struct {
+	prev tea.Model
+}
 
 func (c GoToUsersPage) Select(save *cli_proto.SaveState) (tea.Model, tea.Cmd) {
-	return NewUsersPage(save), nil
+	return NewActiveChatsPage(save, c.prev), nil
 }
 
 func (c GoToUsersPage) String() string {

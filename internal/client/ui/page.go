@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/as283-ua/yappa/api/gen/client"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -21,6 +24,11 @@ type Inputer interface {
 	tea.Model
 	GetInputs() Inputs
 	ToggleShow() Inputer
+	Shows() bool
+}
+
+type Returner interface {
+	Previous() tea.Model
 }
 
 type Input struct {
@@ -110,4 +118,39 @@ var HELP = Input{
 		inputer = inputer.ToggleShow()
 		return inputer, nil
 	},
+}
+
+var RETURN = Input{
+	Keys:        []string{"ctrl+z", "ctrl+left"},
+	Description: "Return to previous page",
+	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
+		returner, ok := m.(Returner)
+		if !ok {
+			return m, nil
+		}
+		if returner.Previous() == nil {
+			return m, nil
+		}
+		return returner.Previous(), returner.Previous().Init()
+	},
+}
+
+func Render(i Inputer) string {
+	s := ""
+	chars := 0
+	if i.Shows() {
+		for _, v := range i.GetInputs().Order {
+			in := i.GetInputs().Inputs[v]
+			keys := Bold.Render("[" + strings.Join(in.Keys, ", ") + "]")
+			entry := fmt.Sprintf("%v - %v   ", keys, in.Description)
+			s += entry
+
+			chars += len(entry)
+			if chars >= 120 {
+				s += "\n"
+				chars = 0
+			}
+		}
+	}
+	return s
 }

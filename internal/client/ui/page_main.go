@@ -2,7 +2,6 @@ package ui
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"log"
 	"math/rand/v2"
@@ -56,15 +55,22 @@ func (m MainPage) ToggleShow() Inputer {
 	return m
 }
 
+func (m MainPage) Shows() bool {
+	return m.show
+}
+
 func (m MainPage) Save() *cli_proto.SaveState {
 	return m.save
 }
 
 func NewMainPage(save *cli_proto.SaveState) MainPage {
+	page := &MainPage{}
+
 	if save == nil {
 		log.Println("nil save state")
 		save = &cli_proto.SaveState{}
 	}
+	page.save = save
 
 	titleScreen := Titles[rand.Int()%len(Titles)]
 	lines := strings.Count(titleScreen, "\n") + 1
@@ -77,16 +83,19 @@ func NewMainPage(save *cli_proto.SaveState) MainPage {
 	for i := lines + (totalLines-lines)/2; i < totalLines; i++ {
 		titleScreen += "\n"
 	}
+	page.titleScreen = titleScreen
 
 	options := make([]Option, 0, 2)
 
 	if !hasCert() {
 		options = append(options, GoToRegister{})
 	} else {
-		options = append(options, GoToUsersPage{})
+		options = append(options, GoToUsersPage{prev: page})
 	}
 
 	options = append(options, Exit{})
+
+	page.options = options
 
 	inputs := Inputs{
 		Inputs: make(map[string]Input),
@@ -99,12 +108,9 @@ func NewMainPage(save *cli_proto.SaveState) MainPage {
 	inputs.Add(SELECT)
 	inputs.Add(HELP)
 
-	return MainPage{
-		options:     options,
-		titleScreen: titleScreen,
-		inputs:      inputs,
-		save:        save,
-	}
+	page.inputs = inputs
+
+	return *page
 }
 
 func (m MainPage) Init() tea.Cmd {
@@ -149,13 +155,7 @@ func (m MainPage) View() string {
 
 	s += "\n\n"
 
-	if m.show {
-		for _, v := range m.inputs.Order {
-			in := m.inputs.Inputs[v]
-			keys := Bold.Render("[" + strings.Join(in.Keys, ", ") + "]")
-			s += fmt.Sprintf("%v - %v   ", keys, in.Description)
-		}
-	}
+	s += Render(m)
 
 	s += "\n\n"
 	return s

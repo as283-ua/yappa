@@ -2,10 +2,8 @@ package ui
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"math"
-	"strings"
 	"time"
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
@@ -28,21 +26,21 @@ func (r UserChatOpt) Select(_ *cli_proto.SaveState) (tea.Model, tea.Cmd) {
 }
 
 var FindChats = Input{
-	Keys:        []string{"ctrl+n"},
+	Keys:        []string{"ctrl+n", "ctrl+d"},
 	Description: "Find new chats",
 	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
-		userpage, ok := m.(*UsersPage)
+		userpage, ok := m.(*ActiveChatsPage)
 		if !ok {
 			log.Fatalf("%t", m)
 			return m, nil
 		}
-		newPage := NewFindPage(userpage.save)
+		newPage := NewFindPage(userpage.save, m)
 
 		return newPage, newPage.Init()
 	},
 }
 
-type UsersPage struct {
+type ActiveChatsPage struct {
 	search textinput.Model
 	users  []Option
 
@@ -53,44 +51,53 @@ type UsersPage struct {
 	show   bool
 
 	save *cli_proto.SaveState
+	prev tea.Model
 }
 
-func (m UsersPage) GetOptions() []Option {
+func (m ActiveChatsPage) GetOptions() []Option {
 	return m.users
 }
 
-func (m UsersPage) GetSelected() Option {
+func (m ActiveChatsPage) GetSelected() Option {
 	return m.users[m.cursor]
 }
 
-func (m *UsersPage) Up() {
+func (m *ActiveChatsPage) Up() {
 	m.cursor--
 	if m.cursor < 0 {
 		m.cursor = len(m.users) - 1
 	}
 }
 
-func (m *UsersPage) Down() {
+func (m *ActiveChatsPage) Down() {
 	m.cursor++
 	if m.cursor >= len(m.users) {
 		m.cursor = 0
 	}
 }
 
-func (m UsersPage) GetInputs() Inputs {
+func (m ActiveChatsPage) GetInputs() Inputs {
 	return m.inputs
 }
 
-func (m UsersPage) ToggleShow() Inputer {
+func (m ActiveChatsPage) ToggleShow() Inputer {
 	m.show = !m.show
 	return m
 }
 
-func (m UsersPage) Save() *cli_proto.SaveState {
+func (m ActiveChatsPage) Shows() bool {
+	return m.show
+}
+
+func (m ActiveChatsPage) Save() *cli_proto.SaveState {
 	return m.save
 }
 
-func NewUsersPage(save *cli_proto.SaveState) UsersPage {
+func (m ActiveChatsPage) Previous() tea.Model {
+	return m.prev
+}
+
+func NewActiveChatsPage(save *cli_proto.SaveState, prev tea.Model) ActiveChatsPage {
 	if save == nil {
 		log.Println("nil save state")
 		save = &cli_proto.SaveState{}
@@ -104,12 +111,13 @@ func NewUsersPage(save *cli_proto.SaveState) UsersPage {
 	inputs.Add(DOWN)
 	inputs.Add(UP)
 	inputs.Add(FindChats)
+	inputs.Add(RETURN)
 	inputs.Add(QUIT)
 	inputs.Add(SELECT)
 	inputs.Add(HELP)
 
 	search := textinput.New()
-	search.Placeholder = "Seach user..."
+	search.Placeholder = "Search user..."
 	search.Prompt = "◆ "
 	search.Focus()
 
@@ -118,21 +126,22 @@ func NewUsersPage(save *cli_proto.SaveState) UsersPage {
 		users = append(users, UserChatOpt{username: chat.Peer.Username})
 	}
 
-	return UsersPage{
+	return ActiveChatsPage{
 		search:       search,
 		users:        users,
 		inputs:       inputs,
 		show:         false,
 		errorMessage: "",
 		save:         save,
+		prev:         prev,
 	}
 }
 
-func (m UsersPage) Init() tea.Cmd {
+func (m ActiveChatsPage) Init() tea.Cmd {
 	return nil
 }
 
-func (m UsersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m ActiveChatsPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd = nil
 	var model tea.Model = nil
 
@@ -168,14 +177,14 @@ func (m UsersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 const MAX_VISIBLE_USERS = 5
 
-func (m UsersPage) View() string {
+func (m ActiveChatsPage) View() string {
 	s := `    █               ▄    ██                              ▀██                ▄          
    ███      ▄▄▄▄  ▄██▄  ▄▄▄  ▄▄▄▄ ▄▄▄   ▄▄▄▄       ▄▄▄▄   ██ ▄▄    ▄▄▄▄   ▄██▄   ▄▄▄▄  
   █  ██   ▄█   ▀▀  ██    ██   ▀█▄  █  ▄█▄▄▄██    ▄█   ▀▀  ██▀ ██  ▀▀ ▄██   ██   ██▄ ▀  
  ▄▀▀▀▀█▄  ██       ██    ██    ▀█▄█   ██         ██       ██  ██  ▄█▀ ██   ██   ▄ ▀█▄▄ 
 ▄█▄  ▄██▄  ▀█▄▄▄▀  ▀█▄▀ ▄██▄    ▀█     ▀█▄▄▄▀     ▀█▄▄▄▀ ▄██▄ ██▄ ▀█▄▄▀█▀  ▀█▄▀ █▀▄▄█▀ `
 
-	s += "\n\n" + m.search.View() + "\n\n"
+	s += "\n\n\n" + m.search.View() + "\n\n"
 
 	boundUp := m.cursor - 2
 	boundDown := m.cursor + 2
@@ -217,13 +226,7 @@ func (m UsersPage) View() string {
 
 	s += "\n\n"
 
-	if m.show {
-		for _, v := range m.inputs.Order {
-			in := m.inputs.Inputs[v]
-			keys := Bold.Render("[" + strings.Join(in.Keys, ", ") + "]")
-			s += fmt.Sprintf("%v - %v   ", keys, in.Description)
-		}
-	}
+	s += Render(m)
 
 	s += "\n\n"
 	return s

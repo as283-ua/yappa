@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/as283-ua/yappa/api/gen/ca"
@@ -90,6 +89,10 @@ func (m RegisterPage) GetInputs() Inputs {
 func (m RegisterPage) ToggleShow() Inputer {
 	m.show = !m.show
 	return m
+}
+
+func (m RegisterPage) Shows() bool {
+	return m.show
 }
 
 func (m RegisterPage) Save() *cli_proto.SaveState {
@@ -194,13 +197,7 @@ func (m RegisterPage) View() string {
 
 	s += "\n\n"
 
-	if m.show {
-		for _, v := range m.inputs.Order {
-			in := m.inputs.Inputs[v]
-			keys := Bold.Render("[" + strings.Join(in.Keys, ", ") + "]")
-			s += fmt.Sprintf("%v - %v   ", keys, in.Description)
-		}
-	}
+	s += Render(m)
 
 	s += "\n\n"
 	return s
