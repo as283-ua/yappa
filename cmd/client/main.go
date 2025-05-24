@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/as283-ua/yappa/internal/client/ui"
@@ -50,7 +51,7 @@ func main() {
 			os.Mkdir(*logsDir, 0755)
 		}
 
-		logFile, err = os.OpenFile(*logsDir+filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		logFile, err = os.OpenFile(*logsDir+filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
 			log.Fatalf("Failed to open log file: %v", err)
 		}
@@ -63,9 +64,16 @@ func main() {
 
 	service.InitHttp3Client(*caCert)
 
-	p := tea.NewProgram(ui.NewMainPage())
+	saveState, err := save.LoadChats()
+	if err != nil {
+		log.Fatalf("Failed to load saved chats: %v", err)
+	}
+	defer save.SaveChats(saveState)
+
+	p := tea.NewProgram(ui.NewMainPage(saveState))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error: %v", err)
 		os.Exit(1)
 	}
+
 }

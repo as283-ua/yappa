@@ -27,3 +27,4 @@ go.work.sum
 **/.obsidian
 .vscode
 logs/
+*.data

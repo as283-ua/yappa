@@ -3,17 +3,18 @@ package ui
 import (
 	"fmt"
 
+	cli_proto "github.com/as283-ua/yappa/api/gen/client"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type Option interface {
 	fmt.Stringer
-	Select() (tea.Model, tea.Cmd)
+	Select(save *cli_proto.SaveState) (tea.Model, tea.Cmd)
 }
 
 type Exit struct{}
 
-func (c Exit) Select() (tea.Model, tea.Cmd) {
+func (c Exit) Select(_ *cli_proto.SaveState) (tea.Model, tea.Cmd) {
 	return nil, tea.Quit
 }
 
@@ -23,8 +24,8 @@ func (c Exit) String() string {
 
 type GoToRegister struct{}
 
-func (c GoToRegister) Select() (tea.Model, tea.Cmd) {
-	return NewRegisterPage(), nil
+func (c GoToRegister) Select(save *cli_proto.SaveState) (tea.Model, tea.Cmd) {
+	return NewRegisterPage(save), nil
 }
 
 func (c GoToRegister) String() string {
@@ -33,8 +34,8 @@ func (c GoToRegister) String() string {
 
 type GoToUsersPage struct{}
 
-func (c GoToUsersPage) Select() (tea.Model, tea.Cmd) {
-	return NewUsersPage(), nil
+func (c GoToUsersPage) Select(save *cli_proto.SaveState) (tea.Model, tea.Cmd) {
+	return NewUsersPage(save), nil
 }
 
 func (c GoToUsersPage) String() string {

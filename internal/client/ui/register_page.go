@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/as283-ua/yappa/api/gen/ca"
+	cli_proto "github.com/as283-ua/yappa/api/gen/client"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -24,7 +25,7 @@ func (r RegisterOpt) String() string {
 	return "Register"
 }
 
-func (r RegisterOpt) Select() (tea.Model, tea.Cmd) {
+func (r RegisterOpt) Select(_ *cli_proto.SaveState) (tea.Model, tea.Cmd) {
 	return nil, register(r.username)
 }
 
@@ -62,6 +63,8 @@ type RegisterPage struct {
 	inputs      Inputs
 
 	errorMessage string
+
+	save *cli_proto.SaveState
 }
 
 func (m RegisterPage) GetOptions() []Option {
@@ -89,7 +92,15 @@ func (m RegisterPage) ToggleShow() Inputer {
 	return m
 }
 
-func NewRegisterPage() RegisterPage {
+func (m RegisterPage) Save() *cli_proto.SaveState {
+	return m.save
+}
+
+func NewRegisterPage(save *cli_proto.SaveState) RegisterPage {
+	if save == nil {
+		log.Println("nil save state")
+		save = &cli_proto.SaveState{}
+	}
 	options := make([]Option, 0, 2)
 
 	registerBtn := &RegisterOpt{username: ""}
@@ -117,6 +128,7 @@ func NewRegisterPage() RegisterPage {
 		inputs:      inputs,
 
 		username: username,
+		save:     save,
 	}
 }
 
@@ -161,7 +173,7 @@ func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			settings.CliSettings.CertDir+"yappa.key",
 			settings.CliSettings.CertDir+"yappa.crt")
 		m.errorMessage = "Good job, you registered!"
-		model = NewMainPage()
+		model = NewMainPage(m.save)
 	}
 
 	if model == nil {

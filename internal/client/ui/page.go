@@ -1,6 +1,13 @@
 package ui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"github.com/as283-ua/yappa/api/gen/client"
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+type Stateful interface {
+	Save() *client.SaveState
+}
 
 type Optioner interface {
 	tea.Model
@@ -76,11 +83,16 @@ var SELECT = Input{
 	Keys:        []string{"enter"},
 	Description: "Select",
 	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
+		state, ok := m.(Stateful)
+		if !ok {
+			return m, nil
+		}
+		save := state.Save()
 		optioner, ok := m.(Optioner)
 		if !ok {
 			return m, nil
 		}
-		return optioner.GetSelected().Select()
+		return optioner.GetSelected().Select(save)
 	},
 }
 

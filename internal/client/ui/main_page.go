@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"math/rand/v2"
 	"os"
 	"strings"
 
+	cli_proto "github.com/as283-ua/yappa/api/gen/client"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -19,6 +21,8 @@ type MainPage struct {
 	options []Option
 	show    bool
 	inputs  Inputs
+
+	save *cli_proto.SaveState
 }
 
 func (m MainPage) GetOptions() []Option {
@@ -52,7 +56,16 @@ func (m MainPage) ToggleShow() Inputer {
 	return m
 }
 
-func NewMainPage() MainPage {
+func (m MainPage) Save() *cli_proto.SaveState {
+	return m.save
+}
+
+func NewMainPage(save *cli_proto.SaveState) MainPage {
+	if save == nil {
+		log.Println("nil save state")
+		save = &cli_proto.SaveState{}
+	}
+
 	titleScreen := Titles[rand.Int()%len(Titles)]
 	lines := strings.Count(titleScreen, "\n") + 1
 	totalLines := 15
@@ -90,6 +103,7 @@ func NewMainPage() MainPage {
 		options:     options,
 		titleScreen: titleScreen,
 		inputs:      inputs,
+		save:        save,
 	}
 }
 

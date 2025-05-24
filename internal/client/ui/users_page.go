@@ -3,9 +3,11 @@ package ui
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
+	cli_proto "github.com/as283-ua/yappa/api/gen/client"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,7 +21,7 @@ func (r UserChatOpt) String() string {
 	return r.username
 }
 
-func (r UserChatOpt) Select() (tea.Model, tea.Cmd) {
+func (r UserChatOpt) Select(_ *cli_proto.SaveState) (tea.Model, tea.Cmd) {
 	return nil, func() tea.Msg {
 		return errors.New("not implemented")
 	}
@@ -29,12 +31,13 @@ type UsersPage struct {
 	search textinput.Model
 	users  []Option
 
-	cursor int
+	cursor       int
+	errorMessage string
 
 	inputs Inputs
 	show   bool
 
-	errorMessage string
+	save *cli_proto.SaveState
 }
 
 func (m UsersPage) GetOptions() []Option {
@@ -68,7 +71,16 @@ func (m UsersPage) ToggleShow() Inputer {
 	return m
 }
 
-func NewUsersPage() UsersPage {
+func (m UsersPage) Save() *cli_proto.SaveState {
+	return m.save
+}
+
+func NewUsersPage(save *cli_proto.SaveState) UsersPage {
+	if save == nil {
+		log.Println("nil save state")
+		save = &cli_proto.SaveState{}
+	}
+
 	inputs := Inputs{
 		Inputs: make(map[string]Input),
 		Order:  make([]string, 0),
@@ -106,6 +118,7 @@ func NewUsersPage() UsersPage {
 		inputs:       inputs,
 		show:         false,
 		errorMessage: "",
+		save:         save,
 	}
 }
 
