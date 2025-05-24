@@ -8,8 +8,9 @@ import (
 )
 
 type UserRepo interface {
-	GetUserByUsername(ctx context.Context, user string) (db.User, error)
+	GetUserData(ctx context.Context, user string) (db.User, error)
 	CreateUser(ctx context.Context, user, cert string, pubKeyExchange []byte) error
+	GetUsers(ctx context.Context, page, size int, name string) ([]string, error)
 }
 
 type PgxUserRepo struct {
@@ -18,12 +19,20 @@ type PgxUserRepo struct {
 
 var Repo UserRepo
 
-func (r PgxUserRepo) GetUserByUsername(ctx context.Context, user string) (db.User, error) {
+func (r PgxUserRepo) GetUserData(ctx context.Context, user string) (db.User, error) {
 	queries := db.New(r.Pool)
-	return queries.GetUserByUsername(ctx, user)
+	return queries.GetUserData(ctx, user)
 }
 
 func (r PgxUserRepo) CreateUser(ctx context.Context, user, cert string, pubKeyExchange []byte) error {
 	queries := db.New(r.Pool)
 	return queries.CreateUser(ctx, db.CreateUserParams{Username: user, Certificate: cert, PubKeyExchange: pubKeyExchange})
+}
+
+func (r PgxUserRepo) GetUsers(ctx context.Context, page, size int, name string) ([]string, error) {
+	queries := db.New(r.Pool)
+	return queries.GetUsers(ctx, db.GetUsersParams{
+		Limit:    int32(size),
+		Offset:   int32(page * size),
+		Username: "%" + name + "%"})
 }

@@ -149,15 +149,15 @@ func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]Get
 	return items, nil
 }
 
-const getUserByUsername = `-- name: GetUserByUsername :one
+const getUserData = `-- name: GetUserData :one
 SELECT id, username, certificate, pub_key_exchange
 FROM users
 WHERE username = $1
 `
 
-// -- AUTH
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByUsername, username)
+// -- USER + AUTH
+func (q *Queries) GetUserData(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserData, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -168,29 +168,10 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 	return i, err
 }
 
-const getUserData = `-- name: GetUserData :one
-SELECT username, certificate, pub_key_exchange
-FROM users
-WHERE username = $1
-`
-
-type GetUserDataRow struct {
-	Username       string
-	Certificate    string
-	PubKeyExchange []byte
-}
-
-func (q *Queries) GetUserData(ctx context.Context, username string) (GetUserDataRow, error) {
-	row := q.db.QueryRow(ctx, getUserData, username)
-	var i GetUserDataRow
-	err := row.Scan(&i.Username, &i.Certificate, &i.PubKeyExchange)
-	return i, err
-}
-
 const getUsers = `-- name: GetUsers :many
 SELECT username
 FROM users
-WHERE username ILIKE  $3 
+WHERE username ILIKE $3
 LIMIT $1 OFFSET $2
 `
 
@@ -200,7 +181,6 @@ type GetUsersParams struct {
 	Username string
 }
 
-// -- USER DATA
 func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, getUsers, arg.Limit, arg.Offset, arg.Username)
 	if err != nil {

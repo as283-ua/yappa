@@ -1,11 +1,13 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/as283-ua/yappa/api/gen/server"
+	"github.com/as283-ua/yappa/internal/server/auth"
 	"github.com/as283-ua/yappa/internal/server/logging"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
@@ -19,7 +21,7 @@ func GetUsernames(w http.ResponseWriter, r *http.Request) {
 	size := intOrDefault(r.Header.Get("size"), 10)
 	name := r.Header.Get("name")
 
-	usernames, err := Repo.GetUsers(page, size, name)
+	usernames, err := auth.Repo.GetUsers(context.Background(), page, size, name)
 	if err != nil {
 		logger.Println("DB error:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -42,7 +44,7 @@ func GetUserData(w http.ResponseWriter, r *http.Request) {
 
 	username := r.PathValue("username")
 
-	user, err := Repo.GetUserData(username)
+	user, err := auth.Repo.GetUserData(context.Background(), username)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "User doesn't exist", http.StatusNotFound)

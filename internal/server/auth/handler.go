@@ -38,7 +38,7 @@ func RegisterInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = Repo.GetUserByUsername(r.Context(), request.User)
+	_, err = Repo.GetUserData(r.Context(), request.User)
 	if err != nil && err != pgx.ErrNoRows {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		log.Println("Pgx error:", err)

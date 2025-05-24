@@ -36,7 +36,9 @@ var FindChats = Input{
 			log.Fatalf("%t", m)
 			return m, nil
 		}
-		return NewFindPage(userpage.save), nil
+		newPage := NewFindPage(userpage.save)
+
+		return newPage, newPage.Init()
 	},
 }
 

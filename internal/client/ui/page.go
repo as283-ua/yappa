@@ -92,6 +92,9 @@ var SELECT = Input{
 		if !ok {
 			return m, nil
 		}
+		if len(optioner.GetOptions()) == 0 {
+			return m, nil
+		}
 		return optioner.GetSelected().Select(save)
 	},
 }

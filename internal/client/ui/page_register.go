@@ -170,8 +170,8 @@ func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = tea.Batch(cmd, completeRegistration(m.registerBtn.username, msg))
 	case RegistrationSuccess:
 		service.UseCertificate(
-			settings.CliSettings.CertDir+"yappa.key",
-			settings.CliSettings.CertDir+"yappa.crt")
+			settings.CliSettings.CertDir+"yappa.crt",
+			settings.CliSettings.CertDir+"yappa.key")
 		m.errorMessage = "Good job, you registered!"
 		model = NewMainPage(m.save)
 	}

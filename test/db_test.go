@@ -33,7 +33,7 @@ func TestCreateUserDb(t *testing.T) {
 
 	t.Log("User created successfully")
 
-	user, err := queries.GetUserByUsername(ctx, username)
+	user, err := queries.GetUserData(ctx, username)
 	if err != nil {
 		t.Fatalf("Failed to fetch user: %v", err)
 	}

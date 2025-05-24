@@ -46,7 +46,7 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 	username := r.TLS.PeerCertificates[0].Subject.CommonName
 	logger.Println("Someone connected:", username)
 
-	_, err := auth.Repo.GetUserByUsername(context.Background(), username)
+	_, err := auth.Repo.GetUserData(context.Background(), username)
 	if err == nil {
 		http.Error(w, "Invalid user", http.StatusBadRequest)
 		return
@@ -109,7 +109,7 @@ func handleMsg(msg *server.SendMsg) {
 }
 
 func saveToInbox(msg *server.SendMsg) error {
-	receiver, err := auth.Repo.GetUserByUsername(context.Background(), msg.Receiver)
+	receiver, err := auth.Repo.GetUserData(context.Background(), msg.Receiver)
 	if err != nil {
 		logging.GetLogger().Println("Get user error:", err)
 		return err

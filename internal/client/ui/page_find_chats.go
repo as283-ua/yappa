@@ -8,14 +8,18 @@ import (
 	"time"
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
+	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+type UsernameList []string
+
 type FindPage struct {
-	search textinput.Model
-	users  []Option
+	search  textinput.Model
+	users   []Option
+	userSet map[string]bool
 
 	cursor       int
 	errorMessage string
@@ -61,6 +65,19 @@ func (m FindPage) Save() *cli_proto.SaveState {
 	return m.save
 }
 
+var RefreshFindChats = Input{
+	Keys:        []string{"ctrl+r"},
+	Description: "Refresh",
+	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
+		findPage, ok := m.(*FindPage)
+		if !ok {
+			return m, nil
+		}
+
+		return findPage, findPage.Init()
+	},
+}
+
 func NewFindPage(save *cli_proto.SaveState) FindPage {
 	if save == nil {
 		log.Println("nil save state")
@@ -74,6 +91,7 @@ func NewFindPage(save *cli_proto.SaveState) FindPage {
 
 	inputs.Add(DOWN)
 	inputs.Add(UP)
+	inputs.Add(RefreshFindChats)
 	inputs.Add(QUIT)
 	inputs.Add(SELECT)
 	inputs.Add(HELP)
@@ -91,14 +109,10 @@ func NewFindPage(save *cli_proto.SaveState) FindPage {
 	seach.Placeholder = "Seach user..."
 	seach.Focus()
 
-	users := make([]Option, len(save.Chats))
-	for _, chat := range save.Chats {
-		users = append(users, UserChatOpt{username: chat.Peer.Username})
-	}
-
 	return FindPage{
 		search:       seach,
-		users:        users,
+		users:        make([]Option, 0, 10),
+		userSet:      make(map[string]bool),
 		inputs:       inputs,
 		show:         false,
 		errorMessage: "",
@@ -107,7 +121,20 @@ func NewFindPage(save *cli_proto.SaveState) FindPage {
 }
 
 func (m FindPage) Init() tea.Cmd {
-	return nil
+	return func() tea.Msg {
+		c, err := service.GetHttp3Client()
+		if err != nil {
+			return err
+		}
+
+		yc := service.UsersClient{Client: c}
+		usernames, err := yc.GetUsers(0, 10, "")
+		if err != nil {
+			return err
+		}
+		var res UsernameList = usernames
+		return res
+	}
 }
 
 func (m FindPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -127,6 +154,13 @@ func (m FindPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if cmdTemp != nil {
 				cmd = tea.Batch(cmd, cmdTemp)
+			}
+		}
+	case UsernameList:
+		for _, v := range msg {
+			if _, ok := m.userSet[v]; !ok {
+				m.users = append(m.users, UserChatOpt{username: v})
+				m.userSet[v] = true
 			}
 		}
 	case error:
@@ -174,10 +208,11 @@ func (m FindPage) View() string {
 		if idx < boundUp || idx > boundDown {
 			continue
 		}
+		entry := fmt.Sprintf("%v. %v", idx+1, v.String())
 		if m.cursor == idx {
-			s += WhiteForeground.Render(v.String()) + "\n\n"
+			s += WhiteForeground.Render(entry) + "\n\n"
 		} else {
-			s += v.String() + "\n\n"
+			s += entry + "\n\n"
 		}
 	}
 	if boundDown != len(m.users)-1 {

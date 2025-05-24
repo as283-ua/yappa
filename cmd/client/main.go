@@ -62,14 +62,33 @@ func main() {
 		log.SetOutput(logFile)
 	}
 
-	service.InitHttp3Client(*caCert)
+	err := service.InitHttp3Client(*caCert)
+	if err != nil {
+		log.Fatalf("Failed to create http client: %v", err)
+	}
 
+	_, err = os.Stat(settings.CliSettings.CertDir + "yappa.crt")
+	if err == nil {
+		_, err = os.Stat(settings.CliSettings.CertDir + "yappa.key")
+		if err == nil {
+			err = service.UseCertificate(settings.CliSettings.CertDir+"yappa.crt",
+				settings.CliSettings.CertDir+"yappa.key")
+			if err != nil {
+				log.Fatalf("Failed to add certificate to http client: %v", err)
+			}
+		} else {
+			log.Fatal("Certificate found but missing private key")
+		}
+	} else {
+		log.Println("No certificate found. Must register")
+	}
 	saveState, err := save.LoadChats()
 	if err != nil {
 		log.Fatalf("Failed to load saved chats: %v", err)
 	}
 	defer save.SaveChats(saveState)
 
+	log.Println("Started client")
 	p := tea.NewProgram(ui.NewMainPage(saveState))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error: %v", err)

@@ -98,7 +98,7 @@ func getTlsConfig() (*tls.Config, error) {
 	}, nil
 }
 
-func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo, chatRepo chat.ChatRepo) (*http3.Server, error) {
+func SetupServer(cfg *settings.ChatCfg, authRepo auth.UserRepo, chatRepo chat.ChatRepo) (*http3.Server, error) {
 	settings.ChatSettings = cfg
 	err := settings.ChatSettings.Validate()
 
@@ -106,7 +106,7 @@ func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo, chatRepo chat.Ch
 		return nil, err
 	}
 
-	auth.Repo = userRepo
+	auth.Repo = authRepo
 	chat.Repo = chatRepo
 
 	err = common.InitHttp3Client(settings.ChatSettings.CaCert)
