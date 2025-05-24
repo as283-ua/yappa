@@ -89,7 +89,7 @@ func TestAllowServerCert(t *testing.T) {
 func TestAllowTestCert(t *testing.T) {
 	setup()
 
-	client := GetHttp3Client("../certs", "test", "../certs/ca/ca.crt")
+	client := GetHttp3Client("assets", "test_ok", "../certs/ca/ca.crt")
 	token := make([]byte, 64)
 	rand.Read(token)
 

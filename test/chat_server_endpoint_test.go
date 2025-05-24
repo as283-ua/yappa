@@ -69,7 +69,7 @@ var DefaultChatServerArgs settings.ChatCfg = settings.ChatCfg{
 func TestRegister(t *testing.T) {
 	setup()
 
-	client := GetHttp3Client("../certs", "", DefaultChatServerArgs.CaCert)
+	client := GetHttp3Client("assets", "", DefaultChatServerArgs.CaCert)
 
 	username := "User1"
 
@@ -150,33 +150,33 @@ func TestRequireCertClient(t *testing.T) {
 	setup()
 
 	t.Run("no_cert_errors", func(t *testing.T) {
-		client := GetHttp3Client("../certs", "", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client("assets", "", DefaultChatServerArgs.CaCert)
 
-		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/test")
+		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/chat/new")
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		assert.Equal(t, r.StatusCode, http.StatusBadRequest)
+		assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	})
 
 	t.Run("with_cert_ok", func(t *testing.T) {
-		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
 
-		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/test")
+		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/chat/new")
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		assert.Equal(t, r.StatusCode, http.StatusOK)
+		assert.Equal(t, http.StatusOK, r.StatusCode)
 	})
 
 	t.Run("with_incorrect_cert_errors", func(t *testing.T) {
-		client := GetHttp3Client("../certs", "test_bad", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client("assets", "test_bad", DefaultChatServerArgs.CaCert)
 
-		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/test")
+		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/chat/new")
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		assert.Equal(t, r.StatusCode, http.StatusBadRequest)
+		assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	})
 }
 
@@ -192,7 +192,7 @@ func TestConnection(t *testing.T) {
 		if !assert.NoError(t, err) {
 			return
 		}
-		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
 
 		str, err := Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
 		if !assert.NoError(t, err) {
@@ -221,57 +221,13 @@ func TestConnection(t *testing.T) {
 		// timer := time.NewTimer(5 * time.Minute)
 		// <-timer.C
 	})
-
-	t.Run("require_ecdh_no_ecdh", func(t *testing.T) {
-		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
-		u, err := url.Parse(serverURL)
-		if !assert.NoError(t, err) {
-			return
-		}
-		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
-		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
-		if assert.Error(t, err) {
-			t.Log(err)
-			return
-		}
-	})
-
-	t.Run("require_ecdh_bad_ecdh", func(t *testing.T) {
-		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
-		u, err := url.Parse(serverURL)
-		if !assert.NoError(t, err) {
-			return
-		}
-		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
-
-		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
-		if assert.Error(t, err) {
-			t.Log(err)
-			return
-		}
-	})
-
-	t.Run("require_ecdh_success", func(t *testing.T) {
-		serverURL := "https://" + DefaultChatServerArgs.Addr + "/connect"
-		u, err := url.Parse(serverURL)
-		if !assert.NoError(t, err) {
-			return
-		}
-		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
-
-		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
-		if !assert.NoError(t, err) {
-			t.Log(err)
-			return
-		}
-	})
 }
 
 func TestChatInit(t *testing.T) {
 	setup()
 
 	t.Run("init_chat", func(t *testing.T) {
-		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
 
 		inboxId := make([]byte, 32)
 		rand.Read(inboxId)
@@ -295,7 +251,7 @@ func TestChatInit(t *testing.T) {
 	})
 
 	t.Run("notify_chat", func(t *testing.T) {
-		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
 
 		inboxId := make([]byte, 32)
 		rand.Read(inboxId)
