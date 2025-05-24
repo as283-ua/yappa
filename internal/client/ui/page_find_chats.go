@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -9,38 +8,12 @@ import (
 	"time"
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type UserChatOpt struct {
-	username string
-}
-
-func (r UserChatOpt) String() string {
-	return r.username
-}
-
-func (r UserChatOpt) Select(_ *cli_proto.SaveState) (tea.Model, tea.Cmd) {
-	return nil, func() tea.Msg {
-		return errors.New("not implemented")
-	}
-}
-
-var FindChats = Input{
-	Keys:        []string{"ctrl+n"},
-	Description: "Find new chats",
-	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
-		userpage, ok := m.(*UsersPage)
-		if !ok {
-			log.Fatalf("%t", m)
-			return m, nil
-		}
-		return NewFindPage(userpage.save), nil
-	},
-}
-
-type UsersPage struct {
+type FindPage struct {
 	search textinput.Model
 	users  []Option
 
@@ -53,42 +26,42 @@ type UsersPage struct {
 	save *cli_proto.SaveState
 }
 
-func (m UsersPage) GetOptions() []Option {
+func (m FindPage) GetOptions() []Option {
 	return m.users
 }
 
-func (m UsersPage) GetSelected() Option {
+func (m FindPage) GetSelected() Option {
 	return m.users[m.cursor]
 }
 
-func (m *UsersPage) Up() {
+func (m *FindPage) Up() {
 	m.cursor--
 	if m.cursor < 0 {
 		m.cursor = len(m.users) - 1
 	}
 }
 
-func (m *UsersPage) Down() {
+func (m *FindPage) Down() {
 	m.cursor++
 	if m.cursor >= len(m.users) {
 		m.cursor = 0
 	}
 }
 
-func (m UsersPage) GetInputs() Inputs {
+func (m FindPage) GetInputs() Inputs {
 	return m.inputs
 }
 
-func (m UsersPage) ToggleShow() Inputer {
+func (m FindPage) ToggleShow() Inputer {
 	m.show = !m.show
 	return m
 }
 
-func (m UsersPage) Save() *cli_proto.SaveState {
+func (m FindPage) Save() *cli_proto.SaveState {
 	return m.save
 }
 
-func NewUsersPage(save *cli_proto.SaveState) UsersPage {
+func NewFindPage(save *cli_proto.SaveState) FindPage {
 	if save == nil {
 		log.Println("nil save state")
 		save = &cli_proto.SaveState{}
@@ -101,23 +74,30 @@ func NewUsersPage(save *cli_proto.SaveState) UsersPage {
 
 	inputs.Add(DOWN)
 	inputs.Add(UP)
-	inputs.Add(FindChats)
 	inputs.Add(QUIT)
 	inputs.Add(SELECT)
 	inputs.Add(HELP)
 
-	search := textinput.New()
-	search.Placeholder = "Seach user..."
-	search.Prompt = "◆ "
-	search.Focus()
+	textbox := textarea.New()
+	textbox.Focus()
+	textbox.Placeholder = "Send a message..."
+	textbox.Prompt = "┃ "
+	textbox.CharLimit = 280
+	textbox.ShowLineNumbers = false
+	textbox.SetHeight(5)
+	textbox.SetWidth(80)
+
+	seach := textinput.New()
+	seach.Placeholder = "Seach user..."
+	seach.Focus()
 
 	users := make([]Option, len(save.Chats))
 	for _, chat := range save.Chats {
 		users = append(users, UserChatOpt{username: chat.Peer.Username})
 	}
 
-	return UsersPage{
-		search:       search,
+	return FindPage{
+		search:       seach,
 		users:        users,
 		inputs:       inputs,
 		show:         false,
@@ -126,11 +106,11 @@ func NewUsersPage(save *cli_proto.SaveState) UsersPage {
 	}
 }
 
-func (m UsersPage) Init() tea.Cmd {
+func (m FindPage) Init() tea.Cmd {
 	return nil
 }
 
-func (m UsersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m FindPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd = nil
 	var model tea.Model = nil
 
@@ -164,16 +144,15 @@ func (m UsersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return model, cmd
 }
 
-const MAX_VISIBLE_USERS = 5
+func (m FindPage) View() string {
+	s := `▀██▀▀▀▀█  ██               ▀██                                            
+ ██  ▄   ▄▄▄  ▄▄ ▄▄▄     ▄▄ ██     ▄▄▄ ▄▄▄   ▄▄▄▄    ▄▄▄▄  ▄▄▄ ▄▄   ▄▄▄▄  
+ ██▀▀█    ██   ██  ██  ▄▀  ▀██      ██  ██  ██▄ ▀  ▄█▄▄▄██  ██▀ ▀▀ ██▄ ▀  
+ ██       ██   ██  ██  █▄   ██      ██  ██  ▄ ▀█▄▄ ██       ██     ▄ ▀█▄▄ 
+▄██▄     ▄██▄ ▄██▄ ██▄ ▀█▄▄▀██▄     ▀█▄▄▀█▄ █▀▄▄█▀  ▀█▄▄▄▀ ▄██▄    █▀▄▄█▀ 
+	`
 
-func (m UsersPage) View() string {
-	s := `    █               ▄    ██                              ▀██                ▄          
-   ███      ▄▄▄▄  ▄██▄  ▄▄▄  ▄▄▄▄ ▄▄▄   ▄▄▄▄       ▄▄▄▄   ██ ▄▄    ▄▄▄▄   ▄██▄   ▄▄▄▄  
-  █  ██   ▄█   ▀▀  ██    ██   ▀█▄  █  ▄█▄▄▄██    ▄█   ▀▀  ██▀ ██  ▀▀ ▄██   ██   ██▄ ▀  
- ▄▀▀▀▀█▄  ██       ██    ██    ▀█▄█   ██         ██       ██  ██  ▄█▀ ██   ██   ▄ ▀█▄▄ 
-▄█▄  ▄██▄  ▀█▄▄▄▀  ▀█▄▀ ▄██▄    ▀█     ▀█▄▄▄▀     ▀█▄▄▄▀ ▄██▄ ██▄ ▀█▄▄▀█▀  ▀█▄▀ █▀▄▄█▀ `
-
-	s += "\n\n" + m.search.View() + "\n\n"
+	s += "\n\n" + m.search.View() + "\n\n\n"
 
 	boundUp := m.cursor - 2
 	boundDown := m.cursor + 2

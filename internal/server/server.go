@@ -16,6 +16,7 @@ import (
 	"github.com/as283-ua/yappa/internal/server/connection"
 	"github.com/as283-ua/yappa/internal/server/logging"
 	"github.com/as283-ua/yappa/internal/server/settings"
+	"github.com/as283-ua/yappa/internal/server/user"
 	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/quic-go/quic-go"
@@ -138,7 +139,10 @@ func SetupServer(cfg *settings.ChatCfg, userRepo auth.UserRepo, chatRepo chat.Ch
 	router.Handle("POST /chat/notify", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.NotifyChatInbox)))
 	router.Handle("GET /chat/new", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.GetNewChats)))
 	router.Handle("GET /chat/token", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.GetChatToken)))
-	router.Handle("GET /chat/messages", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.GetNewMessages)))
+	router.Handle("POST /chat/messages", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.GetNewMessages)))
+
+	router.Handle("GET /users", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(user.GetUsernames)))
+	router.Handle("GET /users/{username}", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(user.GetUserData)))
 
 	server := &http3.Server{
 		Addr:        settings.ChatSettings.Addr,

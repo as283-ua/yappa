@@ -87,3 +87,13 @@ message GetNewMessages {
 message ListNewMessages {
     repeated bytes msgs = 1;
 }
+
+message Usernames {
+    repeated string usernames = 1;
+}
+
+message UserData {
+    string username = 1;
+    string certificate = 2;
+    bytes pub_key_exchange = 3;
+}

@@ -53,3 +53,17 @@ WHERE inbox_code = $1;
 -- name: FlushInbox :exec
 DELETE FROM chat_inbox_messages
 WHERE inbox_code = $1;
+
+
+
+---- USER DATA
+-- name: GetUsers :many
+SELECT username
+FROM users
+WHERE username ILIKE $3
+LIMIT $1 OFFSET $2;
+
+-- name: GetUserData :one
+SELECT username, certificate, pub_key_exchange
+FROM users
+WHERE username = $1;

@@ -168,6 +168,59 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 	return i, err
 }
 
+const getUserData = `-- name: GetUserData :one
+SELECT username, certificate, pub_key_exchange
+FROM users
+WHERE username = $1
+`
+
+type GetUserDataRow struct {
+	Username       string
+	Certificate    string
+	PubKeyExchange []byte
+}
+
+func (q *Queries) GetUserData(ctx context.Context, username string) (GetUserDataRow, error) {
+	row := q.db.QueryRow(ctx, getUserData, username)
+	var i GetUserDataRow
+	err := row.Scan(&i.Username, &i.Certificate, &i.PubKeyExchange)
+	return i, err
+}
+
+const getUsers = `-- name: GetUsers :many
+SELECT username
+FROM users
+WHERE username ILIKE  $3 
+LIMIT $1 OFFSET $2
+`
+
+type GetUsersParams struct {
+	Limit    int32
+	Offset   int32
+	Username string
+}
+
+// -- USER DATA
+func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, getUsers, arg.Limit, arg.Offset, arg.Username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err != nil {
+			return nil, err
+		}
+		items = append(items, username)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const newUserInbox = `-- name: NewUserInbox :exec
 INSERT INTO user_inboxes (username, enc_sender, enc_inbox_code, key_exchange_data)
 VALUES ($1, $2, $3, $4)

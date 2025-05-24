@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 
 	"github.com/as283-ua/yappa/api/gen/ca"
@@ -20,28 +19,7 @@ type RegistrationClient struct {
 	Client *http.Client
 }
 
-func handleHttpErrors(err error) error {
-	var netErr net.Error
-	if errors.As(err, &netErr) {
-		if netErr.Timeout() {
-			return errors.New("the server seems to be down")
-		}
-
-		log.Println("Network error:", netErr)
-		return errors.New("network error")
-	}
-
-	if errors.Is(err, http.ErrServerClosed) {
-		log.Println("Network error:", err)
-		return errors.New("server closed the connection unexpectedly")
-	}
-
-	log.Println("Request failed:", err)
-	return errors.New("request failed")
-}
-
 func (c RegistrationClient) RequestRegistration(username string) (*ca.AllowUser, error) {
-
 	regRequest := &server.RegistrationRequest{
 		User: username,
 	}

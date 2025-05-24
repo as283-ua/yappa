@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -71,4 +73,24 @@ func UseCertificate(cert, key string) error {
 	t.TLSClientConfig.Certificates = append(t.TLSClientConfig.Certificates, x509cert)
 
 	return nil
+}
+
+func handleHttpErrors(err error) error {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		if netErr.Timeout() {
+			return errors.New("the server seems to be down")
+		}
+
+		log.Println("Network error:", netErr)
+		return errors.New("network error")
+	}
+
+	if errors.Is(err, http.ErrServerClosed) {
+		log.Println("Network error:", err)
+		return errors.New("server closed the connection unexpectedly")
+	}
+
+	log.Println("Request failed:", err)
+	return errors.New("request failed")
 }
