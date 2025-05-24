@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package chat;
+package gen;
 
-option go_package = "github.com/as283-ua/yappa/api/gen/client";
+option go_package = "github.com/as283-ua/yappa/api/gen";
 
 message ChatMessage {
     string msg = 1;

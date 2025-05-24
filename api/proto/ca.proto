@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ca;
+package gen;
 
 option go_package = "github.com/as283-ua/yappa/api/gen";
 

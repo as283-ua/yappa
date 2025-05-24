@@ -3,10 +3,8 @@ package test
 import (
 	"bytes"
 	"context"
-	"crypto/ecdh"
 	"crypto/mlkem"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -195,15 +193,8 @@ func TestConnection(t *testing.T) {
 			return
 		}
 		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
-		ecdhKX25519, err := ecdh.X25519().GenerateKey(rand.Reader)
-		if !assert.NoError(t, err) {
-			return
-		}
-		ecdhBytes := ecdhKX25519.PublicKey().Bytes()
-		ecdhStr := base64.StdEncoding.EncodeToString(ecdhBytes)
-		header := http.Header{}
-		header.Add("X-Ecdh", ecdhStr)
-		str, err := Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), header)
+
+		str, err := Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
 		if !assert.NoError(t, err) {
 			return
 		}
@@ -211,9 +202,9 @@ func TestConnection(t *testing.T) {
 		defer str.Close()
 
 		msg := &gen.ClientMessage{
-			Payload: &gen.ClientMessage_Init{Init: &gen.ChatInit{
-				InboxId: []byte{0, 1, 2, 3},
-			}},
+			Payload: &gen.ClientMessage_Send{
+				Send: &gen.SendMsg{Serial: 1},
+			},
 		}
 
 		m, err := proto.Marshal(msg)
@@ -252,15 +243,8 @@ func TestConnection(t *testing.T) {
 			return
 		}
 		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
-		ecdhK256, err := ecdh.P256().GenerateKey(rand.Reader)
-		if !assert.NoError(t, err) {
-			return
-		}
-		ecdhBytes := ecdhK256.PublicKey().Bytes()
-		ecdhStr := base64.StdEncoding.EncodeToString(ecdhBytes)
-		header := http.Header{}
-		header.Add("X-Ecdh", ecdhStr)
-		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), header)
+
+		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
 		if assert.Error(t, err) {
 			t.Log(err)
 			return
@@ -274,15 +258,8 @@ func TestConnection(t *testing.T) {
 			return
 		}
 		client := GetHttp3Client("../certs", "test_ok", DefaultChatServerArgs.CaCert)
-		ecdhKX25519, err := ecdh.X25519().GenerateKey(rand.Reader)
-		if !assert.NoError(t, err) {
-			return
-		}
-		ecdhBytes := ecdhKX25519.PublicKey().Bytes()
-		ecdhStr := base64.StdEncoding.EncodeToString(ecdhBytes)
-		header := http.Header{}
-		header.Add("X-Ecdh", ecdhStr)
-		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), header)
+
+		_, err = Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
 		if !assert.NoError(t, err) {
 			t.Log(err)
 			return

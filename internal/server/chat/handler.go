@@ -82,9 +82,9 @@ func GetNewChats(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, v := range newChats {
 		chats.Chats = append(chats.Chats, &gen.NewChat{
-			EncSender:    v.EncSender,
-			EncInboxCode: v.EncInboxCode,
-			EcdhPub:      v.KeyExchangeData,
+			EncSender:       v.EncSender,
+			EncInboxCode:    v.EncInboxCode,
+			KeyExchangeData: v.KeyExchangeData,
 		})
 	}
 
