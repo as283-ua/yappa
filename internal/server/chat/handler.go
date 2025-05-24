@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/server/logging"
 	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/jackc/pgx/v5"
@@ -24,7 +24,7 @@ func CreateChatInbox(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	chatInit := &gen.ChatInit{}
+	chatInit := &server.ChatInit{}
 	err = proto.Unmarshal(body, chatInit)
 	if err != nil {
 		http.Error(w, "Incorrect body format", http.StatusBadRequest)
@@ -50,7 +50,7 @@ func NotifyChatInbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	notify := &gen.ChatInitNotify{}
+	notify := &server.ChatInitNotify{}
 	err = proto.Unmarshal(body, notify)
 	if err != nil {
 		http.Error(w, "Incorrect body format", http.StatusBadRequest)
@@ -77,11 +77,11 @@ func GetNewChats(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	chats := &gen.ListNewChats{
-		Chats: make([]*gen.NewChat, 0),
+	chats := &server.ListNewChats{
+		Chats: make([]*server.NewChat, 0),
 	}
 	for _, v := range newChats {
-		chats.Chats = append(chats.Chats, &gen.NewChat{
+		chats.Chats = append(chats.Chats, &server.NewChat{
 			EncSender:       v.EncSender,
 			EncInboxCode:    v.EncInboxCode,
 			KeyExchangeData: v.KeyExchangeData,
@@ -145,7 +145,7 @@ func GetNewMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	getMsgs := &gen.GetNewMessages{}
+	getMsgs := &server.GetNewMessages{}
 	err = proto.Unmarshal(bodyTxt, getMsgs)
 	if err != nil {
 		http.Error(w, "Incorrect body format", http.StatusBadRequest)
@@ -178,7 +178,7 @@ func GetNewMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	msgsProto := &gen.ListNewMessages{}
+	msgsProto := &server.ListNewMessages{}
 	msgsProto.Msgs = append(msgsProto.Msgs, msgs...)
 	result, err := proto.Marshal(msgsProto)
 	if err != nil {

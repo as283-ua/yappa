@@ -12,7 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/api/gen/ca"
+	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/ca/logging"
 	"google.golang.org/protobuf/proto"
 )
@@ -25,7 +26,7 @@ type RegTokens struct {
 var allowedUsers map[string]RegTokens = make(map[string]RegTokens)
 var mu sync.Mutex
 
-func validateAllow(allow *gen.AllowUser) error {
+func validateAllow(allow *ca.AllowUser) error {
 	if len(allow.Token) != 64 {
 		return errors.New("invalid token")
 	}
@@ -39,7 +40,7 @@ func validateAllow(allow *gen.AllowUser) error {
 
 func AllowUser(w http.ResponseWriter, req *http.Request) {
 	log := logging.GetLogger()
-	allowUser := &gen.AllowUser{}
+	allowUser := &ca.AllowUser{}
 
 	content, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -58,7 +59,7 @@ func AllowUser(w http.ResponseWriter, req *http.Request) {
 	token := make([]byte, 64)
 	rand.Read(token)
 
-	confirm := &gen.ConfirmRegistrationToken{
+	confirm := &server.ConfirmRegistrationToken{
 		User:  allowUser.User,
 		Token: token,
 	}
@@ -83,7 +84,7 @@ func AllowUser(w http.ResponseWriter, req *http.Request) {
 func SignCert(caCert *x509.Certificate, caKey any) func(w http.ResponseWriter, req *http.Request) {
 	log := logging.GetLogger()
 	return func(w http.ResponseWriter, req *http.Request) {
-		certRequest := &gen.CertRequest{}
+		certRequest := &ca.CertRequest{}
 		body, err := io.ReadAll(req.Body)
 
 		if err != nil {
@@ -152,7 +153,7 @@ func SignCert(caCert *x509.Certificate, caKey any) func(w http.ResponseWriter, r
 
 		w.Header().Add("Content-Type", "application/x-protobuf")
 
-		cert := &gen.CertResponse{
+		cert := &ca.CertResponse{
 			Cert:  signedCertPEM,
 			Token: token.confirmationToken,
 		}

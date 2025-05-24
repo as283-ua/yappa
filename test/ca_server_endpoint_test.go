@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/as283-ua/yappa/api/gen"
+	ca_proto "github.com/as283-ua/yappa/api/gen/ca"
 	"github.com/as283-ua/yappa/internal/ca"
 	"github.com/as283-ua/yappa/internal/ca/settings"
 	"github.com/quic-go/quic-go/http3"
@@ -48,7 +48,7 @@ func TestAllowNoCert(t *testing.T) {
 	token := make([]byte, 64)
 	rand.Read(token)
 
-	allowUser := &gen.AllowUser{
+	allowUser := &ca_proto.AllowUser{
 		User:  "User1",
 		Token: token,
 	}
@@ -70,7 +70,7 @@ func TestAllowServerCert(t *testing.T) {
 	token := make([]byte, 64)
 	rand.Read(token)
 
-	allowUser := &gen.AllowUser{
+	allowUser := &ca_proto.AllowUser{
 		User:  "User1",
 		Token: token,
 	}
@@ -93,7 +93,7 @@ func TestAllowTestCert(t *testing.T) {
 	token := make([]byte, 64)
 	rand.Read(token)
 
-	allowUser := &gen.AllowUser{
+	allowUser := &ca_proto.AllowUser{
 		User:  "User1",
 		Token: token,
 	}

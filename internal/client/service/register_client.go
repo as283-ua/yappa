@@ -10,7 +10,8 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/api/gen/ca"
+	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"google.golang.org/protobuf/proto"
 )
@@ -39,8 +40,9 @@ func handleHttpErrors(err error) error {
 	return errors.New("request failed")
 }
 
-func (c RegistrationClient) RequestRegistration(username string) (*gen.AllowUser, error) {
-	regRequest := &gen.RegistrationRequest{
+func (c RegistrationClient) RequestRegistration(username string) (*ca.AllowUser, error) {
+
+	regRequest := &server.RegistrationRequest{
 		User: username,
 	}
 
@@ -69,7 +71,7 @@ func (c RegistrationClient) RequestRegistration(username string) (*gen.AllowUser
 		return nil, fmt.Errorf("%v", string(body))
 	}
 
-	allowUser := &gen.AllowUser{}
+	allowUser := &ca.AllowUser{}
 	err = proto.Unmarshal(body, allowUser)
 
 	if err != nil {
@@ -79,8 +81,8 @@ func (c RegistrationClient) RequestRegistration(username string) (*gen.AllowUser
 	return allowUser, nil
 }
 
-func (c RegistrationClient) CertificateSignatureRequest(allowUser *gen.AllowUser, csrPem []byte) (*gen.CertResponse, error) {
-	certRequest := &gen.CertRequest{
+func (c RegistrationClient) CertificateSignatureRequest(allowUser *ca.AllowUser, csrPem []byte) (*ca.CertResponse, error) {
+	certRequest := &ca.CertRequest{
 		User:  allowUser.User,
 		Token: allowUser.Token,
 		Csr:   csrPem,
@@ -108,7 +110,7 @@ func (c RegistrationClient) CertificateSignatureRequest(allowUser *gen.AllowUser
 		return nil, errors.New(string(bytesResp))
 	}
 
-	certResponse := &gen.CertResponse{}
+	certResponse := &ca.CertResponse{}
 	err = proto.Unmarshal(bytesResp, certResponse)
 	if err != nil {
 		log.Println("Protobuf unmarshal error:", err)
@@ -118,8 +120,8 @@ func (c RegistrationClient) CertificateSignatureRequest(allowUser *gen.AllowUser
 	return certResponse, nil
 }
 
-func (c RegistrationClient) CompleteRegistration(username string, certResponse *gen.CertResponse, kyberKey *mlkem.DecapsulationKey1024) error {
-	confirmation := &gen.ConfirmRegistration{
+func (c RegistrationClient) CompleteRegistration(username string, certResponse *ca.CertResponse, kyberKey *mlkem.DecapsulationKey1024) error {
+	confirmation := &server.ConfirmRegistration{
 		User:           username,
 		Token:          certResponse.Token,
 		Cert:           certResponse.Cert,

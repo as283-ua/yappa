@@ -7,7 +7,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/api/gen/ca"
+	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/server/logging"
 	"github.com/as283-ua/yappa/internal/server/settings"
 	"github.com/as283-ua/yappa/pkg/common"
@@ -30,7 +31,7 @@ func RegisterInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request := &gen.RegistrationRequest{}
+	request := &server.RegistrationRequest{}
 	err = proto.Unmarshal(body, request)
 	if err != nil {
 		http.Error(w, "Incorrect format", http.StatusBadRequest)
@@ -57,7 +58,7 @@ func RegisterInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowUser := &gen.AllowUser{
+	allowUser := &ca.AllowUser{
 		User:  request.User,
 		Token: oneTimeToken,
 	}
@@ -92,7 +93,7 @@ func RegisterInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	confirmation := &gen.ConfirmRegistrationToken{}
+	confirmation := &server.ConfirmRegistrationToken{}
 
 	err = proto.Unmarshal(confirmationBytes, confirmation)
 	if err != nil {
@@ -119,7 +120,7 @@ func RegisterComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	confirmation := &gen.ConfirmRegistration{}
+	confirmation := &server.ConfirmRegistration{}
 
 	err = proto.Unmarshal(b, confirmation)
 	if err != nil {

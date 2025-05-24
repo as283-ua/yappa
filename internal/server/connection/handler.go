@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/server/auth"
 	"github.com/as283-ua/yappa/internal/server/chat"
 	"github.com/as283-ua/yappa/internal/server/logging"
@@ -75,7 +75,7 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 
 		str.Read(msg)
 
-		protoMsg := &gen.ClientMessage{}
+		protoMsg := &server.ClientMessage{}
 		err = proto.Unmarshal(msg, protoMsg)
 
 		if err != nil {
@@ -84,23 +84,23 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch payload := protoMsg.Payload.(type) {
-		case *gen.ClientMessage_Send:
+		case *server.ClientMessage_Send:
 			chatSend := payload.Send
 			logger.Println(chatSend)
 			handleMsg(chatSend)
-		case *gen.ClientMessage_Hb:
+		case *server.ClientMessage_Hb:
 		default:
 			// Unknown or unset
 		}
 	}
 }
 
-func handleMsg(msg *gen.SendMsg) {
+func handleMsg(msg *server.SendMsg) {
 	conn, ok := sessions[msg.Receiver]
 	if !ok {
 		saveToInbox(msg)
 	}
-	send := &gen.ReceiveMsg{
+	send := &server.ReceiveMsg{
 		EncData: msg.Message,
 	}
 	sendBytes, _ := proto.Marshal(send)
@@ -108,7 +108,7 @@ func handleMsg(msg *gen.SendMsg) {
 	(*conn).Write(sendBytes)
 }
 
-func saveToInbox(msg *gen.SendMsg) error {
+func saveToInbox(msg *server.SendMsg) error {
 	receiver, err := auth.Repo.GetUserByUsername(context.Background(), msg.Receiver)
 	if err != nil {
 		logging.GetLogger().Println("Get user error:", err)

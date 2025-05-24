@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/api/gen/ca"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -152,9 +152,9 @@ func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorMessage = ""
 
 	// certificate shenanigans
-	case *gen.AllowUser:
+	case *ca.AllowUser:
 		cmd = tea.Batch(cmd, createAndSignCertificate(msg))
-	case *gen.CertResponse:
+	case *ca.CertResponse:
 		cmd = tea.Batch(cmd, completeRegistration(m.registerBtn.username, msg))
 	case RegistrationSuccess:
 		service.UseCertificate(
@@ -194,7 +194,7 @@ func (m RegisterPage) View() string {
 	return s
 }
 
-func createAndSignCertificate(allowUser *gen.AllowUser) tea.Cmd {
+func createAndSignCertificate(allowUser *ca.AllowUser) tea.Cmd {
 	return func() tea.Msg {
 		key, err := service.GeneratePrivKey()
 		if err != nil {
@@ -225,7 +225,7 @@ func createAndSignCertificate(allowUser *gen.AllowUser) tea.Cmd {
 	}
 }
 
-func completeRegistration(username string, certResponse *gen.CertResponse) tea.Cmd {
+func completeRegistration(username string, certResponse *ca.CertResponse) tea.Cmd {
 	return func() tea.Msg {
 		err := savePemFile(certResponse.Cert, "yappa.crt")
 		if err != nil {

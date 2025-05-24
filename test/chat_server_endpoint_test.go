@@ -14,7 +14,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/as283-ua/yappa/api/gen"
+	"github.com/as283-ua/yappa/api/gen/ca"
+	serv_proto "github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/server"
 	"github.com/as283-ua/yappa/internal/server/auth"
@@ -73,7 +74,7 @@ func TestRegister(t *testing.T) {
 
 	username := "User1"
 
-	regRequest := &gen.RegistrationRequest{
+	regRequest := &serv_proto.RegistrationRequest{
 		User: username,
 	}
 
@@ -92,7 +93,7 @@ func TestRegister(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
-	allowUser := &gen.AllowUser{}
+	allowUser := &ca.AllowUser{}
 	err = proto.Unmarshal(body, allowUser)
 
 	assert.NoError(t, err)
@@ -109,7 +110,7 @@ func TestRegister(t *testing.T) {
 		t.FailNow()
 	}
 
-	certRequest := &gen.CertRequest{
+	certRequest := &ca.CertRequest{
 		User:  allowUser.User,
 		Token: allowUser.Token,
 		Csr:   csr,
@@ -125,12 +126,12 @@ func TestRegister(t *testing.T) {
 	bytesResp, _ := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 
-	certResponse := &gen.CertResponse{}
+	certResponse := &ca.CertResponse{}
 	proto.Unmarshal(bytesResp, certResponse)
 
 	t.Log(string(certResponse.Cert))
 
-	confirmation := &gen.ConfirmRegistration{
+	confirmation := &serv_proto.ConfirmRegistration{
 		User:  regRequest.User,
 		Token: certResponse.Token,
 		Cert:  certResponse.Cert,
@@ -201,9 +202,9 @@ func TestConnection(t *testing.T) {
 
 		defer str.Close()
 
-		msg := &gen.ClientMessage{
-			Payload: &gen.ClientMessage_Send{
-				Send: &gen.SendMsg{Serial: 1},
+		msg := &serv_proto.ClientMessage{
+			Payload: &serv_proto.ClientMessage_Send{
+				Send: &serv_proto.SendMsg{Serial: 1},
 			},
 		}
 
@@ -231,7 +232,7 @@ func TestChatInit(t *testing.T) {
 
 		inboxId := make([]byte, 32)
 		rand.Read(inboxId)
-		regRequest := &gen.ChatInit{
+		regRequest := &serv_proto.ChatInit{
 			InboxId: inboxId,
 		}
 
@@ -255,7 +256,7 @@ func TestChatInit(t *testing.T) {
 
 		inboxId := make([]byte, 32)
 		rand.Read(inboxId)
-		regRequest := &gen.ChatInit{
+		regRequest := &serv_proto.ChatInit{
 			InboxId: inboxId,
 		}
 
@@ -277,7 +278,7 @@ func TestChatInit(t *testing.T) {
 		encSender, _ := Encrypt([]byte("Sender"), aesK)
 		encInboxId, _ := Encrypt(inboxId, aesK)
 
-		regRequest2 := &gen.ChatInitNotify{
+		regRequest2 := &serv_proto.ChatInitNotify{
 			Receiver:        receiverUsername,
 			KeyExchangeData: cipherText,
 			EncSender:       encSender,

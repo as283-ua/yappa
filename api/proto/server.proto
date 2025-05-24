@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package gen;
 
-option go_package = "github.com/as283-ua/yappa/api/gen";
+option go_package = "github.com/as283-ua/yappa/api/gen/server";
 
 // registration messages
 message RegistrationRequest {
