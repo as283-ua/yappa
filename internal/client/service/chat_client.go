@@ -7,7 +7,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/mlkem"
 	"crypto/rand"
-	"crypto/x509"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -294,18 +293,9 @@ func (c *ChatClient) NewChat(peer *server.UserData) (*cli_proto.Chat, error) {
 		return nil, errors.New("no certificates loaded")
 	}
 
-	loadedCert := tlsConf.Certificates[0]
-	privateKey := loadedCert.PrivateKey
-	certificate := loadedCert.Certificate
+	clientName := GetUsername()
 
-	parsedCert, err := x509.ParseCertificate(certificate[0])
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse certificate: %w", err)
-	}
-
-	clientName := parsedCert.Subject.CommonName
-
-	privK, ok := privateKey.(*ecdsa.PrivateKey)
+	privK, ok := GetCertificate().PrivateKey.(*ecdsa.PrivateKey)
 	if !ok {
 		return nil, errors.New("private key is not of expected type ECDSA")
 	}

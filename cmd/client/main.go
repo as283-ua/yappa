@@ -97,7 +97,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load saved chats: %v", err)
 	}
-	defer save.SaveChats(saveState)
+	defer func() {
+		save.SaveChats(saveState)
+		log.Println("Saved chat")
+	}()
 
 	log.Println("Started client")
 	p := tea.NewProgram(ui.NewMainPage(saveState))

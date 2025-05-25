@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 )
 
 var httpClient *http.Client
+var certificate tls.Certificate
+var username string
 
 func GetHttp3Client() (*http.Client, error) {
 	if httpClient == nil {
@@ -21,6 +24,14 @@ func GetHttp3Client() (*http.Client, error) {
 	}
 
 	return httpClient, nil
+}
+
+func GetCertificate() tls.Certificate {
+	return certificate
+}
+
+func GetUsername() string {
+	return username
 }
 
 func InitHttp3Client(caCertPath string) error {
@@ -71,6 +82,14 @@ func UseCertificate(cert, key string) error {
 	}
 
 	t.TLSClientConfig.Certificates = append(t.TLSClientConfig.Certificates, x509cert)
+	certificate = x509cert
+
+	parsedCert, err := x509.ParseCertificate(certificate.Certificate[0])
+	if err != nil {
+		return fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	username = parsedCert.Subject.CommonName
 
 	return nil
 }

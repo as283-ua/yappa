@@ -1,13 +1,14 @@
 package ui
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"math"
 	"time"
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
+	"github.com/as283-ua/yappa/api/gen/server"
+	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -22,7 +23,18 @@ func (r UserChatOpt) String() string {
 
 func (r UserChatOpt) Select(_ *cli_proto.SaveState) (tea.Model, tea.Cmd) {
 	return nil, func() tea.Msg {
-		return errors.New("not implemented")
+		c, err := service.GetHttp3Client()
+		if err != nil {
+			return err
+		}
+
+		yc := service.UsersClient{Client: c}
+		user, err := yc.GetUserData(r.username)
+		if err != nil {
+			return err
+		}
+
+		return user
 	}
 }
 
@@ -163,9 +175,11 @@ func (m ActiveChatsPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = tea.Batch(cmd, cmdTemp)
 			}
 		}
+	case *server.UserData:
+		model = NewChatPage(m.save, m, msg)
+		cmd = model.Init()
 	case error:
 		m.errorMessage = msg.Error()
-
 		cmd = tea.Batch(cmd, TimedCmd(5*time.Second, ClearErrorMsg{}))
 	case ClearErrorMsg:
 		m.errorMessage = ""

@@ -1,8 +1,8 @@
 package save
 
 import (
-	"bytes"
 	"errors"
+	"log"
 	"os"
 
 	"github.com/as283-ua/yappa/api/gen/client"
@@ -44,23 +44,15 @@ func SaveChats(save *client.SaveState) error {
 }
 
 func NewDirectChat(save *client.SaveState, chat *client.Chat) {
-	save.Chats = append(save.Chats, chat)
-}
-
-func NewEvent(save *client.SaveState, peer *client.PeerData, event *client.ClientEvent) {
-	idx := -1
-	var chat *client.Chat
-	for i, v := range save.Chats {
-		if bytes.Equal(v.Peer.InboxId, peer.InboxId) && v.Peer.Username == peer.Username {
-			idx = i
-			chat = v
-		}
-	}
-
-	if idx == -1 {
+	c := DirectChat(save, chat.Peer.Username)
+	if c == nil {
+		log.Printf("Added new chat with %v\n", chat.Peer.Username)
+		save.Chats = append(save.Chats, chat)
 		return
 	}
+}
 
+func NewEvent(save *client.SaveState, chat *client.Chat, event *client.ClientEvent) {
 	chat.Events = append(chat.Events, event)
 }
 
