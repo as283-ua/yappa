@@ -150,12 +150,9 @@ func SetupServer(cfg *settings.ChatCfg, authRepo auth.UserRepo, chatRepo chat.Ch
 		TLSConfig:   tlsConfig,
 		IdleTimeout: 60 * time.Second,
 		QUICConfig: &quic.Config{
-			EnableDatagrams: true,
-			Tracer:          qlog.DefaultConnectionTracer,
+			Tracer: qlog.DefaultConnectionTracer,
 		},
 	}
-
-	server.EnableDatagrams = true
 
 	return server, nil
 }

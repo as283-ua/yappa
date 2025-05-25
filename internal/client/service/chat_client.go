@@ -28,7 +28,7 @@ type ChatClient struct {
 
 var client *ChatClient
 
-func InitChatClient(h3c *http.Client) {
+func InitChatClient(h3c *http.Client) *ChatClient {
 	client = &ChatClient{
 		client:  h3c,
 		str:     nil,
@@ -36,6 +36,7 @@ func InitChatClient(h3c *http.Client) {
 		subs:    make([]chan<- *server.ServerMessage, 0),
 		MainSub: make(chan<- *server.ServerMessage, 50),
 	}
+	return client
 }
 
 func GetChatClient() *ChatClient {
@@ -53,6 +54,7 @@ func (c *ChatClient) Connect() error {
 	if err != nil {
 		return err
 	}
+	log.Println("Connected")
 	go c.readloop()
 	go c.heartbeatLoop()
 	return nil
@@ -118,10 +120,11 @@ func (c *ChatClient) dispatch(msg *server.ServerMessage) {
 }
 
 func (c *ChatClient) heartbeatLoop() {
-	timer := time.NewTimer(20 * time.Second)
+	ticker := time.NewTicker(20 * time.Second)
 	for {
-		<-timer.C
+		<-ticker.C
 		c.Send(&server.ClientMessage{Payload: &server.ClientMessage_Hb{}})
+		log.Printf("Heartbeat %v\n", time.Now())
 	}
 }
 

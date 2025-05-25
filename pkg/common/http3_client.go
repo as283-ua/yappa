@@ -33,12 +33,8 @@ func InitHttp3Client(caCertPath string) error {
 
 	transport := &http3.Transport{
 		TLSClientConfig: tlsConfig,
-		QUICConfig: &quic.Config{
-			EnableDatagrams: true,
-		},
+		QUICConfig:      &quic.Config{},
 	}
-
-	transport.EnableDatagrams = true
 
 	HttpClient = &http.Client{
 		Transport: transport,

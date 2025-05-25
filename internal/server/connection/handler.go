@@ -5,10 +5,8 @@ import (
 	"crypto/mlkem"
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/server/auth"
@@ -22,19 +20,6 @@ import (
 var sessions map[string]*http3.Stream = make(map[string]*http3.Stream)
 
 func upgrade(w http.ResponseWriter) (http3.Stream, error) {
-	conn := w.(http3.Hijacker).Connection()
-	timer := time.NewTimer(5 * time.Second)
-	defer timer.Stop()
-	select {
-	case <-conn.ReceivedSettings():
-	case <-timer.C:
-		return nil, fmt.Errorf("didn't receive the client's SETTINGS on time")
-	}
-	settings := conn.Settings()
-	if !settings.EnableDatagrams {
-		return nil, fmt.Errorf("missing datagram support")
-	}
-
 	w.WriteHeader(http.StatusOK)
 	w.(http.Flusher).Flush()
 
@@ -47,13 +32,15 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 	logger.Println("Someone connected:", username)
 
 	_, err := auth.Repo.GetUserData(context.Background(), username)
-	if err == nil {
+	if err != nil {
 		http.Error(w, "Invalid user", http.StatusBadRequest)
+		logger.Println("Invalid user:", err)
 		return
 	}
 
 	str, err := upgrade(w)
 	if err != nil {
+		http.Error(w, "Bad http configuration", http.StatusBadRequest)
 		logger.Println("Upgrade error:", err)
 		return
 	}

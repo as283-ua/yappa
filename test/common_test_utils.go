@@ -44,11 +44,9 @@ func GetHttp3Client(certPath, certificateOwner, caCertPath string) *http.Client 
 	transport := &http3.Transport{
 		TLSClientConfig: tlsConfig,
 		QUICConfig: &quic.Config{
-			MaxIdleTimeout:  60 * time.Second,
-			EnableDatagrams: true,
-			Tracer:          qlog.DefaultConnectionTracer,
+			MaxIdleTimeout: 60 * time.Second,
+			Tracer:         qlog.DefaultConnectionTracer,
 		},
-		EnableDatagrams: true,
 	}
 
 	return &http.Client{

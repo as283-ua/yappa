@@ -78,9 +78,6 @@ func Http3Stream(ctx context.Context, url *url.URL, tr *http3.Transport, header 
 	if !settings.EnableExtendedConnect {
 		return result, fmt.Errorf("server didn't enable Extended CONNECT")
 	}
-	if !settings.EnableDatagrams {
-		return result, fmt.Errorf("server didn't enable HTTP/3 datagram support")
-	}
 
 	requestStr, err := clientConn.OpenRequestStream(ctx)
 	if err != nil {
@@ -90,8 +87,6 @@ func Http3Stream(ctx context.Context, url *url.URL, tr *http3.Transport, header 
 	if err := requestStr.SendRequestHeader(req); err != nil {
 		return result, err
 	}
-
-	clientConn.Settings().EnableDatagrams = true
 
 	rsp, err := requestStr.ReadResponse()
 
