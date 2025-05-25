@@ -202,13 +202,15 @@ func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]string, e
 }
 
 const newUserInbox = `-- name: NewUserInbox :exec
-INSERT INTO user_inboxes (username, enc_sender, enc_inbox_code, key_exchange_data)
-VALUES ($1, $2, $3, $4)
+INSERT INTO user_inboxes (username, enc_sender, enc_signature, enc_serial, enc_inbox_code, key_exchange_data)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type NewUserInboxParams struct {
 	Username        string
 	EncSender       []byte
+	EncSignature    []byte
+	EncSerial       []byte
 	EncInboxCode    []byte
 	KeyExchangeData []byte
 }
@@ -218,6 +220,8 @@ func (q *Queries) NewUserInbox(ctx context.Context, arg NewUserInboxParams) erro
 	_, err := q.db.Exec(ctx, newUserInbox,
 		arg.Username,
 		arg.EncSender,
+		arg.EncSignature,
+		arg.EncSerial,
 		arg.EncInboxCode,
 		arg.KeyExchangeData,
 	)

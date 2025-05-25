@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/as283-ua/yappa/internal/client/save"
@@ -32,6 +33,10 @@ func main() {
 	logsDir = flag.String("logs", "logs/cli/", "Error logs directory.\n\"/dev/null\" or \"null\" to suppress error logs.\n\"-\" to show errors on-screen (buggy)")
 
 	flag.Parse()
+
+	if !strings.HasSuffix(*certDir, "/") {
+		*certDir += "/"
+	}
 
 	settings.CliSettings = settings.Settings{
 		CertDir:    *certDir,
@@ -81,6 +86,7 @@ func main() {
 			if err != nil {
 				log.Fatalf("Failed opening connection to the server: %v", err)
 			}
+			defer service.GetChatClient().Close()
 		} else {
 			log.Fatal("Certificate found but missing private key")
 		}

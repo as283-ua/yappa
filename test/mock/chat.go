@@ -31,13 +31,15 @@ func (r MockChatRepo) GetUserInboxes() map[string][]db.UserInbox {
 	return r.userInboxes
 }
 
-func (r *MockChatRepo) ShareChatInbox(username string, encSender, encInboxCode, keyExchangeData []byte) error {
+func (r *MockChatRepo) ShareChatInbox(username string, encSender, encInboxCode, encSignature, encSerial, keyExchangeData []byte) error {
 	r.userInboxes[username] = append(r.userInboxes[username], db.UserInbox{
 		ID:              int32(r.userInboxSerial),
 		Username:        username,
 		EncSender:       encSender,
 		EncInboxCode:    encInboxCode,
 		KeyExchangeData: keyExchangeData,
+		EncSignature:    encSignature,
+		EncSerial:       encSerial,
 	})
 	r.userInboxSerial++
 	return nil

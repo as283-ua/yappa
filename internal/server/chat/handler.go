@@ -2,6 +2,7 @@ package chat
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"io"
 	"net/http"
@@ -9,35 +10,42 @@ import (
 	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/server/logging"
 	"github.com/as283-ua/yappa/pkg/common"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/protobuf/proto"
 )
 
 // Creates a new chat inbox with no data other that its id. Users can't be associated to a given inbox.
 func CreateChatInbox(w http.ResponseWriter, r *http.Request) {
 	logger := logging.GetLogger()
-	body, err := io.ReadAll(r.Body)
+	inboxId := make([]byte, 32)
+	for {
+		rand.Read(inboxId)
+		err := Repo.CreateChatInbox(inboxId)
+		if err == nil {
+			break
+		}
+		var e *pgconn.PgError
+		if errors.As(err, &e) && e.Code != pgerrcode.UniqueViolation {
+			logger.Println("DB error:", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	chatInit := &server.ChatInit{
+		InboxId: inboxId,
+	}
+	raw, err := proto.Marshal(chatInit)
 	if err != nil {
-		logger.Println("Body read error:", err)
+		logger.Println("Marshal error:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	defer r.Body.Close()
 
-	chatInit := &server.ChatInit{}
-	err = proto.Unmarshal(body, chatInit)
-	if err != nil {
-		http.Error(w, "Incorrect body format", http.StatusBadRequest)
-		return
-	}
-
-	err = Repo.CreateChatInbox(chatInit.InboxId)
-	if err != nil {
-		logger.Println("DB error:", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
 	w.WriteHeader(http.StatusOK)
+	w.Write(raw)
 }
 
 // Puts the encrypted inbox id and sender username into the ChatInboxes table where users will check for new chats
@@ -57,7 +65,7 @@ func NotifyChatInbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = Repo.ShareChatInbox(notify.Receiver, notify.EncSender, notify.EncInboxId, notify.KeyExchangeData)
+	err = Repo.ShareChatInbox(notify.Receiver, notify.EncSender, notify.EncInboxId, notify.EncSignature, notify.EncSerial, notify.KeyExchangeData)
 	if err != nil {
 		logger.Println("DB error:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

@@ -135,7 +135,7 @@ func SetupServer(cfg *settings.ChatCfg, authRepo auth.UserRepo, chatRepo chat.Ch
 	router.Handle("POST /register/confirm", http.HandlerFunc(auth.RegisterComplete))
 
 	router.Handle("CONNECT /connect", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(connection.Connection)))
-	router.Handle("POST /chat/init", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.CreateChatInbox)))
+	router.Handle("GET /chat/init", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.CreateChatInbox)))
 	router.Handle("POST /chat/notify", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.NotifyChatInbox)))
 	router.Handle("GET /chat/new", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.GetNewChats)))
 	router.Handle("GET /chat/token", connection.RequireCertificate(tlsVerifyOpts, http.HandlerFunc(chat.GetChatToken)))

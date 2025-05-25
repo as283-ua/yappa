@@ -8,7 +8,7 @@ import (
 )
 
 type ChatRepo interface {
-	ShareChatInbox(username string, encSender, encInboxCode, keyExchangeData []byte) error
+	ShareChatInbox(username string, encSender, encInboxCode, encSignature, encSerial, keyExchangeData []byte) error
 	CreateChatInbox(inboxCode []byte) error
 	GetNewChats(username string) ([]db.GetNewUserInboxesRow, error)
 	DeleteNewChats(username string) error
@@ -26,13 +26,15 @@ type PgxChatRepo struct {
 
 var Repo ChatRepo
 
-func (r PgxChatRepo) ShareChatInbox(username string, encSender, encInboxCode, keyExchangeData []byte) error {
+func (r PgxChatRepo) ShareChatInbox(username string, encSender, encInboxCode, encSignature, encSerial, keyExchangeData []byte) error {
 	queries := db.New(r.Pool)
 	return queries.NewUserInbox(r.Ctx, db.NewUserInboxParams{
 		Username:        username,
 		EncSender:       encSender,
 		EncInboxCode:    encInboxCode,
 		KeyExchangeData: keyExchangeData,
+		EncSignature:    encSignature,
+		EncSerial:       encSerial,
 	})
 }
 

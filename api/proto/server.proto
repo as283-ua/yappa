@@ -37,7 +37,7 @@ message ChatInitNotify {
     string receiver = 1;
     bytes encSerial = 2;
     bytes encSender = 3;
-    bytes encSignedSender = 4;
+    bytes encSignature = 4;
     bytes encInboxId = 5;
     bytes keyExchangeData = 6;
 }

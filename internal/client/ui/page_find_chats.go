@@ -202,7 +202,8 @@ func (m FindPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case *server.UserData:
-		model = NewChatPage(m.save, msg)
+		model = NewChatPage(m.save, m, msg)
+		cmd = model.Init()
 	case error:
 		m.errorMessage = msg.Error()
 
@@ -259,7 +260,7 @@ func (m FindPage) View() string {
 	}
 
 	if len(m.users) == 0 {
-		s += WhiteForeground.Render("No active chats") + "\n"
+		s += WhiteForeground.Render("No users") + "\n"
 	}
 
 	if m.errorMessage != "" {

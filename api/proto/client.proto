@@ -43,17 +43,18 @@ message LeaveGroup {
 
 message ClientEvent {
     uint64 timestamp = 1;
-    string sender = 2;
+    uint64 serial = 2;
+    string sender = 3;
     oneof payload {
-        ChatMessage message = 3;
-        KeyRotation key_rotation = 4;
+        ChatMessage message = 4;
+        KeyRotation key_rotation = 5;
 
         // Group chat events
-        GroupData group_data = 5;
-        GroupKeyRotation group_key_rotation = 6;
-        AddMember add_member = 7;
-        LeaveGroup leave_group = 8;
-        KickUser kick_user = 9;
+        GroupData group_data = 6;
+        GroupKeyRotation group_key_rotation = 7;
+        AddMember add_member = 8;
+        LeaveGroup leave_group = 9;
+        KickUser kick_user = 10;
     }
 }
 

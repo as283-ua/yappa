@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math"
 	"time"
@@ -121,10 +122,12 @@ func NewActiveChatsPage(save *cli_proto.SaveState, prev tea.Model) ActiveChatsPa
 	search.Prompt = "◆ "
 	search.Focus()
 
-	users := make([]Option, len(save.Chats))
+	users := make([]Option, 0, len(save.Chats))
 	for _, chat := range save.Chats {
 		users = append(users, UserChatOpt{username: chat.Peer.Username})
 	}
+
+	log.Println(users)
 
 	return ActiveChatsPage{
 		search:       search,
@@ -206,10 +209,11 @@ func (m ActiveChatsPage) View() string {
 		if idx < boundUp || idx > boundDown {
 			continue
 		}
+		entry := fmt.Sprintf("%v. %v", idx+1, v.String())
 		if m.cursor == idx {
-			s += WhiteForeground.Render(v.String()) + "\n\n"
+			s += WhiteForeground.Render(entry) + "\n\n"
 		} else {
-			s += v.String() + "\n\n"
+			s += entry + "\n\n"
 		}
 	}
 	if boundDown != len(m.users)-1 {

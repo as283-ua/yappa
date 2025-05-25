@@ -54,7 +54,7 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 		var lenBuf [4]byte
 		_, err := io.ReadFull(str, lenBuf[:])
 		if err != nil {
-			logger.Println("Failed to read length:", err)
+			logger.Println("Connection error:", err)
 			return
 		}
 		msgLen := binary.BigEndian.Uint32(lenBuf[:])
@@ -76,7 +76,6 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 			logger.Println(chatSend)
 			handleMsg(chatSend)
 		case *server.ClientMessage_Hb:
-			logger.Println("Heartbeat")
 		default:
 			// Unknown or unset
 		}

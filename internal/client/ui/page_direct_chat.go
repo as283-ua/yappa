@@ -2,10 +2,13 @@ package ui
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/as283-ua/yappa/api/gen/client"
 	"github.com/as283-ua/yappa/api/gen/server"
+	"github.com/as283-ua/yappa/internal/client/save"
+	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,7 +22,7 @@ func MessageToString(m *client.ClientEvent, senderStyle lipgloss.Style) string {
 }
 
 type ChatPage struct {
-	username     string
+	peer         *server.UserData
 	viewport     viewport.Model
 	textbox      textarea.Model
 	msg          string
@@ -32,9 +35,10 @@ type ChatPage struct {
 	show   bool
 
 	save *client.SaveState
+	prev tea.Model
 }
 
-func NewChatPage(save *client.SaveState, user *server.UserData) ChatPage {
+func NewChatPage(save *client.SaveState, prev tea.Model, user *server.UserData) ChatPage {
 	textbox := textarea.New()
 	textbox.Focus()
 	textbox.Placeholder = "Send a message..."
@@ -45,13 +49,23 @@ func NewChatPage(save *client.SaveState, user *server.UserData) ChatPage {
 	textbox.SetWidth(80)
 	textbox.FocusedStyle.CursorLine = lipgloss.NewStyle()
 
+	inputs := Inputs{
+		Inputs: make(map[string]Input),
+		Order:  make([]string, 0),
+	}
+	inputs.Add(RETURN)
+	inputs.Add(QUIT)
+	inputs.Add(HELP)
+
 	return ChatPage{
 		save:           save,
-		username:       user.Username,
+		prev:           prev,
+		peer:           user,
 		viewport:       viewport.New(80, 12),
 		textbox:        textbox,
 		senderStyle:    lipgloss.NewStyle().Foreground(lipgloss.Color("#ff8")),
 		recipientStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#45f")),
+		inputs:         inputs,
 	}
 }
 
@@ -72,8 +86,25 @@ func (m ChatPage) Save() *client.SaveState {
 	return m.save
 }
 
+func (m ChatPage) Previous() tea.Model {
+	return m.prev
+}
+
 func (m ChatPage) Init() tea.Cmd {
-	return nil
+	return func() tea.Msg {
+		log.Println("Initiating chat")
+		chat := save.DirectChat(m.save, m.peer.Username)
+		var err error
+		if chat == nil {
+			log.Println("First time chatting, retrieving data...")
+			chat, err = service.GetChatClient().NewChat(m.peer)
+			if err != nil {
+				log.Printf("Error creating chat: %v", err)
+				return err
+			}
+		}
+		return chat
+	}
 }
 
 func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -97,6 +128,8 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = tea.Batch(cmd, cmdTemp)
 			}
 		}
+	case *client.Chat:
+		save.NewDirectChat(m.save, msg)
 	case error:
 		m.errorMessage = msg.Error()
 
@@ -115,17 +148,27 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m ChatPage) View() string {
 	var s string
 
-	s = fmt.Sprintf("Chat with '%s'\n", m.username)
+	s = fmt.Sprintf("Chat with '%s'\n", m.peer.Username)
 
-	s += "_________________________\n"
+	s += "________________________________________________________________________________\n"
 	s += m.viewport.View() + "\n"
-	s += "‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\n\n"
+	s += "‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\n\n"
 	s += m.textbox.View() + "\n"
 	s += "ctrl+s to post\n"
 
 	if m.msg != "" {
 		s += fmt.Sprintf("Info: %s\n\n", m.msg)
 	}
+
+	if m.errorMessage != "" {
+		s += Warning.Render("\n\nError: ") + m.errorMessage
+	}
+
+	s += "\n\n"
+
+	s += Render(m)
+
+	s += "\n\n"
 
 	return s
 }
