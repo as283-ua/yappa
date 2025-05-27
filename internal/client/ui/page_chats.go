@@ -44,7 +44,6 @@ var FindChats = Input{
 	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
 		userpage, ok := m.(*ActiveChatsPage)
 		if !ok {
-			log.Fatalf("%t", m)
 			return m, nil
 		}
 		newPage := NewFindPage(userpage.save, m)

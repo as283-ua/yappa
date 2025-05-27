@@ -82,10 +82,12 @@ func main() {
 				log.Fatalf("Failed to add certificate to http client: %v", err)
 			}
 			h3c, _ := service.GetHttp3Client()
-			err = service.InitChatClient(h3c).Connect()
-			if err != nil {
-				log.Fatalf("Failed opening connection to the server: %v", err)
-			}
+			go func() {
+				err = service.InitChatClient(h3c).Connect()
+				if err != nil {
+					log.Printf("Failed opening connection to the server: %v", err)
+				}
+			}()
 			defer service.GetChatClient().Close()
 		} else {
 			log.Fatal("Certificate found but missing private key")

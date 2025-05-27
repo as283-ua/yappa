@@ -63,7 +63,7 @@ func Http3Stream(ctx context.Context, url *url.URL, tr *http3.Transport, header 
 
 	conn, err := quic.DialAddr(ctx, url.Host, tr.TLSClientConfig, tr.QUICConfig)
 	if err != nil {
-		log.Fatalf("Failed to connect: %v", err)
+		return nil, fmt.Errorf("failed to connect: %v", err)
 	}
 
 	clientConn := tr.NewClientConn(conn)

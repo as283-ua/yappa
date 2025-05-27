@@ -78,7 +78,10 @@ func (c *ChatClient) Connect() error {
 
 func (c *ChatClient) Close() error {
 	connected = false
-	return c.str.Close()
+	if c != nil && c.str != nil {
+		return c.str.Close()
+	}
+	return nil
 }
 
 func (c *ChatClient) Send(msg *server.ClientMessage) error {
