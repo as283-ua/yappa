@@ -21,7 +21,7 @@ INSERT INTO user_inboxes (username, enc_sender, enc_signature, enc_serial, enc_i
 VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: GetNewUserInboxes :many
-SELECT enc_sender, enc_inbox_code, key_exchange_data
+SELECT enc_sender, enc_inbox_code, enc_serial, enc_signature, key_exchange_data
 FROM user_inboxes
 WHERE username = $1;
 

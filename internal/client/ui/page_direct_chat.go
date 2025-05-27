@@ -257,7 +257,6 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msgTxt != "" {
 				m.vpContent += msgTxt + "\n"
 				m.viewport.SetContent(m.vpContent)
-				m.viewport.GotoBottom()
 			}
 		}
 		cmd = tea.Batch(cmd, m.waitMessage)

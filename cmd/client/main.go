@@ -81,6 +81,12 @@ func main() {
 			if err != nil {
 				log.Fatalf("Failed to add certificate to http client: %v", err)
 			}
+
+			err = service.UseMlkemKey(settings.CliSettings.CertDir + "dk.key")
+			if err != nil {
+				log.Fatalf("Failed getting private mlkem key: %v", err)
+			}
+
 			h3c, _ := service.GetHttp3Client()
 			chatClient := service.InitChatClient(h3c)
 			go func() {
@@ -96,6 +102,7 @@ func main() {
 	} else {
 		log.Println("No certificate found. Must register")
 	}
+
 	saveState, err := save.LoadChats()
 	if err != nil {
 		log.Fatalf("Failed to load saved chats: %v", err)

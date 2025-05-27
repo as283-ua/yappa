@@ -93,6 +93,8 @@ func GetNewChats(w http.ResponseWriter, r *http.Request) {
 			EncSender:       v.EncSender,
 			EncInboxCode:    v.EncInboxCode,
 			KeyExchangeData: v.KeyExchangeData,
+			EncSerial:       v.EncSerial,
+			EncSign:         v.EncSignature,
 		})
 	}
 

@@ -14,6 +14,7 @@ import (
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
 	"github.com/as283-ua/yappa/api/gen/server"
+	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/quic-go/quic-go/http3"
@@ -179,7 +180,7 @@ func (c *ChatClient) NewChat(peer *server.UserData) (*cli_proto.Chat, error) {
 	return chat, nil
 }
 
-func (c *ChatClient) RetrieveNewChats() (*server.ListNewChats, error) {
+func (c *ChatClient) fetchNewChats() (*server.ListNewChats, error) {
 	url := fmt.Sprintf("https://%v/chat/new", settings.CliSettings.ServerHost)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -211,7 +212,7 @@ func (c *ChatClient) RetrieveNewChats() (*server.ListNewChats, error) {
 	return chats, nil
 }
 
-func (c *ChatClient) RetrieveChatToken(inboxId []byte) (*server.InboxToken, error) {
+func (c *ChatClient) fetchChatToken(inboxId []byte) (*server.InboxToken, error) {
 	url := fmt.Sprintf("https://%v/chat/token", settings.CliSettings.ServerHost)
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader(inboxId))
@@ -246,7 +247,7 @@ func (c *ChatClient) RetrieveChatToken(inboxId []byte) (*server.InboxToken, erro
 	return token, nil
 }
 
-func (c *ChatClient) RetrieveNewMessages(inboxId, token []byte) (*server.ListNewMessages, error) {
+func (c *ChatClient) fetchNewMessages(inboxId, token []byte) (*server.ListNewMessages, error) {
 	url := fmt.Sprintf("https://%v/chat/token", settings.CliSettings.ServerHost)
 
 	getMsgs := &server.GetNewMessages{
@@ -294,4 +295,80 @@ func (c *ChatClient) RetrieveNewMessages(inboxId, token []byte) (*server.ListNew
 	}
 
 	return msgs, nil
+}
+
+func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) error {
+	chats, err := c.fetchNewChats()
+	if err != nil {
+		return err
+	}
+	for _, chat := range chats.Chats {
+		key, err := GetMlkemDecap().Decapsulate(chat.KeyExchangeData)
+		if err != nil {
+			continue
+		}
+		inboxId, err := common.Decrypt(chat.EncInboxCode, key)
+		if err != nil {
+			continue
+		}
+		sender, err := common.Decrypt(chat.EncSender, key)
+		if err != nil {
+			continue
+		}
+		serialB, err := common.Decrypt(chat.EncSerial, key)
+		if err != nil {
+			continue
+		}
+
+		serial := binary.LittleEndian.Uint64(serialB[:])
+		userData, err := UsersClient{Client: c.client}.GetUserData(string(sender))
+		if err != nil {
+			continue
+		}
+
+		save.NewDirectChat(saveState, &cli_proto.Chat{
+			Events:        make([]*cli_proto.ClientEvent, 0),
+			SerialStart:   serial,
+			CurrentSerial: serial,
+			Key:           key,
+			Peer: &cli_proto.PeerData{
+				Username:    userData.Username,
+				KeyExchange: userData.PubKeyExchange,
+				Cert:        []byte(userData.Certificate),
+				InboxId:     inboxId,
+			},
+		})
+	}
+
+	for _, chat := range saveState.Chats {
+		tokenObj, err := c.fetchChatToken(chat.Peer.InboxId)
+		if err != nil {
+			continue
+		}
+		tokenKey, err := GetMlkemDecap().Decapsulate(tokenObj.KeyExchangeData)
+		if err != nil {
+			continue
+		}
+		token, err := common.Decrypt(tokenObj.EncToken, tokenKey)
+		if err != nil {
+			continue
+		}
+		messages, err := c.fetchNewMessages(chat.Peer.InboxId, token)
+		if err != nil {
+			continue
+		}
+		for _, encMsg := range messages.Msgs {
+			msg, err := common.Decrypt(encMsg, chat.Key)
+			if err != nil {
+				continue
+			}
+			event := &cli_proto.ClientEvent{}
+			err = proto.Unmarshal(msg, event)
+			if err != nil {
+				continue
+			}
+			save.NewEvent(saveState, chat, event)
+		}
+	}
+	return nil
 }

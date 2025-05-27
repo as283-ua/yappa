@@ -118,7 +118,7 @@ func (q *Queries) GetMessages(ctx context.Context, inboxCode []byte) ([][]byte, 
 }
 
 const getNewUserInboxes = `-- name: GetNewUserInboxes :many
-SELECT enc_sender, enc_inbox_code, key_exchange_data
+SELECT enc_sender, enc_inbox_code, enc_serial, enc_signature, key_exchange_data
 FROM user_inboxes
 WHERE username = $1
 `
@@ -126,6 +126,8 @@ WHERE username = $1
 type GetNewUserInboxesRow struct {
 	EncSender       []byte
 	EncInboxCode    []byte
+	EncSerial       []byte
+	EncSignature    []byte
 	KeyExchangeData []byte
 }
 
@@ -138,7 +140,13 @@ func (q *Queries) GetNewUserInboxes(ctx context.Context, username string) ([]Get
 	var items []GetNewUserInboxesRow
 	for rows.Next() {
 		var i GetNewUserInboxesRow
-		if err := rows.Scan(&i.EncSender, &i.EncInboxCode, &i.KeyExchangeData); err != nil {
+		if err := rows.Scan(
+			&i.EncSender,
+			&i.EncInboxCode,
+			&i.EncSerial,
+			&i.EncSignature,
+			&i.KeyExchangeData,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

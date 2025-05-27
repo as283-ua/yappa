@@ -7,14 +7,13 @@ import (
 	"os"
 
 	"github.com/as283-ua/yappa/api/gen/client"
-	"github.com/as283-ua/yappa/internal/client/service"
 	"google.golang.org/protobuf/proto"
 )
 
 const WAL_PATH = "data.wal"
 
 func savePath() string {
-	return fmt.Sprintf("chats_%v.data", service.GetUsername())
+	return "chats_.data"
 }
 
 func LoadChats() (*client.SaveState, error) {
@@ -65,6 +64,7 @@ func NewDirectChat(save *client.SaveState, chat *client.Chat) {
 
 func NewEvent(save *client.SaveState, chat *client.Chat, event *client.ClientEvent) {
 	chat.Events = append(chat.Events, event)
+	// todo: handle key change here
 }
 
 func DirectChat(save *client.SaveState, username string) *client.Chat {

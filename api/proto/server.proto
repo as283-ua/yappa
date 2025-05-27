@@ -72,7 +72,9 @@ message InboxToken {
 message NewChat {
     bytes encSender = 1;
 	bytes encInboxCode = 2;
-	bytes keyExchangeData = 3;
+	bytes encSign = 3;
+	bytes encSerial = 4;
+	bytes keyExchangeData = 5;
 }
 
 message ListNewChats {

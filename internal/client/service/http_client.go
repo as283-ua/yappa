@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/mlkem"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -16,6 +17,7 @@ import (
 
 var httpClient *http.Client
 var certificate tls.Certificate
+var mlkemDecap *mlkem.DecapsulationKey1024
 var username string
 
 func GetHttp3Client() (*http.Client, error) {
@@ -28,6 +30,10 @@ func GetHttp3Client() (*http.Client, error) {
 
 func GetCertificate() tls.Certificate {
 	return certificate
+}
+
+func GetMlkemDecap() *mlkem.DecapsulationKey1024 {
+	return mlkemDecap
 }
 
 func GetUsername() string {
@@ -91,6 +97,18 @@ func UseCertificate(cert, key string) error {
 
 	username = parsedCert.Subject.CommonName
 
+	return nil
+}
+
+func UseMlkemKey(priv string) error {
+	mlkemDecapRaw, err := os.ReadFile(priv)
+	if err != nil {
+		return err
+	}
+	mlkemDecap, err = mlkem.NewDecapsulationKey1024(mlkemDecapRaw)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
