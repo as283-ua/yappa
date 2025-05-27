@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"google.golang.org/protobuf/proto"
 )
 
 func messageToString(m *client.ClientEvent, senderStyle lipgloss.Style) string {
@@ -41,6 +42,9 @@ type ChatPage struct {
 
 	save *client.SaveState
 	prev tea.Model
+
+	subId        int
+	subscription <-chan *server.ServerMessage
 }
 
 type MsgSend struct{}
@@ -77,16 +81,20 @@ func NewChatPage(save *client.SaveState, prev tea.Model, user *server.UserData) 
 	inputs.Add(QUIT)
 	inputs.Add(HELP)
 
+	subId, subscription := service.GetChatClient().Subscribe()
+
 	return ChatPage{
-		save:      save,
-		prev:      prev,
-		peer:      user,
-		viewport:  viewport.New(120, 20),
-		textbox:   textbox,
-		selfStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#ff8")),
-		peerStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#45f")),
-		inputs:    inputs,
-		chat:      &client.Chat{},
+		save:         save,
+		prev:         prev,
+		peer:         user,
+		viewport:     viewport.New(120, 20),
+		textbox:      textbox,
+		selfStyle:    lipgloss.NewStyle().Foreground(lipgloss.Color("#ff8")),
+		peerStyle:    lipgloss.NewStyle().Foreground(lipgloss.Color("#45f")),
+		inputs:       inputs,
+		chat:         &client.Chat{},
+		subId:        subId,
+		subscription: subscription,
 	}
 }
 
@@ -111,21 +119,29 @@ func (m ChatPage) Previous() tea.Model {
 	return m.prev
 }
 
-func (m ChatPage) Init() tea.Cmd {
-	return tea.Batch(tea.ClearScreen, func() tea.Msg {
-		log.Println("Initiating chat")
-		chat := save.DirectChat(m.save, m.peer.Username)
+func loadChat(saveState *client.SaveState, peer *server.UserData) tea.Cmd {
+	return func() tea.Msg {
+		log.Println("Loading chat")
+		chat := save.DirectChat(saveState, peer.Username)
 		var err error
 		if chat == nil {
 			log.Println("First time chatting, retrieving data...")
-			chat, err = service.GetChatClient().NewChat(m.peer)
+			chat, err = service.GetChatClient().NewChat(peer)
 			if err != nil {
 				log.Printf("Error creating chat: %v", err)
 				return err
 			}
 		}
 		return chat
-	})
+	}
+}
+
+func (m ChatPage) waitMessage() tea.Msg {
+	return <-m.subscription
+}
+
+func (m ChatPage) Init() tea.Cmd {
+	return tea.Batch(tea.ClearScreen, loadChat(m.save, m.peer), m.waitMessage)
 }
 
 func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -182,7 +198,28 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				},
 			},
 		}
-		// service.GetChatClient().Send()
+		raw, err := proto.Marshal(event)
+		if err != nil {
+			cmd = tea.Batch(cmd, func() tea.Msg { return err })
+			break
+		}
+
+		// encrypt raw
+
+		err = service.GetChatClient().Send(&server.ClientMessage{
+			Payload: &server.ClientMessage_Send{
+				Send: &server.SendMsg{
+					Serial:   m.chat.CurrentSerial,
+					Receiver: m.chat.Peer.Username,
+					InboxId:  m.chat.Peer.InboxId,
+					Message:  raw,
+				},
+			},
+		})
+		if err != nil {
+			cmd = tea.Batch(cmd, func() tea.Msg { return err })
+			break
+		}
 		save.NewEvent(m.save, m.chat, event)
 		m.textbox.SetValue("")
 		msgTxt := messageToString(event, m.selfStyle)
@@ -191,6 +228,30 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.SetContent(m.vpContent)
 			m.viewport.GotoBottom()
 		}
+	case *server.ServerMessage:
+		log.Printf("%t\n", msg.Payload)
+		switch payload := msg.Payload.(type) {
+		case *server.ServerMessage_Send:
+			raw := payload.Send.EncData
+
+			// decrypt data
+
+			peerMsg := &client.ClientEvent{}
+			err := proto.Unmarshal(raw, peerMsg)
+
+			if err != nil {
+				cmd = tea.Batch(cmd, func() tea.Msg { return err })
+				break
+			}
+			save.NewEvent(m.save, m.chat, peerMsg)
+			msgTxt := messageToString(peerMsg, m.peerStyle)
+			if msgTxt != "" {
+				m.vpContent += msgTxt + "\n"
+				m.viewport.SetContent(m.vpContent)
+				m.viewport.GotoBottom()
+			}
+		}
+		cmd = tea.Batch(cmd, m.waitMessage)
 	case error:
 		m.errorMessage = msg.Error()
 		cmd = tea.Batch(cmd, TimedCmd(5*time.Second, ClearErrorMsg{}))

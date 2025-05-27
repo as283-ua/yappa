@@ -2,19 +2,24 @@ package save
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/as283-ua/yappa/api/gen/client"
+	"github.com/as283-ua/yappa/internal/client/service"
 	"google.golang.org/protobuf/proto"
 )
 
-const SAVE_PATH = "chats.data"
 const WAL_PATH = "data.wal"
+
+func savePath() string {
+	return fmt.Sprintf("chats_%v.data", service.GetUsername())
+}
 
 func LoadChats() (*client.SaveState, error) {
 	saveState := &client.SaveState{}
-	saveStateRaw, err := os.ReadFile(SAVE_PATH)
+	saveStateRaw, err := os.ReadFile(savePath())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return saveState, nil
@@ -29,6 +34,12 @@ func LoadChats() (*client.SaveState, error) {
 		return nil, err
 	}
 
+	for _, v := range saveState.Chats {
+		if v.Peer == nil {
+			return nil, fmt.Errorf("nil peer in a chat %v", v)
+		}
+	}
+
 	return saveState, nil
 }
 
@@ -40,7 +51,7 @@ func SaveChats(save *client.SaveState) error {
 
 	// encrypt file
 
-	return os.WriteFile(SAVE_PATH, saveRaw, 0600)
+	return os.WriteFile(savePath(), saveRaw, 0600)
 }
 
 func NewDirectChat(save *client.SaveState, chat *client.Chat) {

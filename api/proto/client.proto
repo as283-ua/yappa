@@ -67,9 +67,10 @@ message PeerData {
 
 message Chat {
     repeated ClientEvent events = 1;
-    uint64 current_serial = 2;
-    bytes key = 3;
-    PeerData peer = 4;
+    uint64 serial_start = 2;
+    uint64 current_serial = 3;
+    bytes key = 4;
+    PeerData peer = 5;
 }
 
 message GroupChat {

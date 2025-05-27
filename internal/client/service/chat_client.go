@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	mathrand "math/rand"
 	"net/http"
 	"net/url"
 	"sync"
@@ -30,9 +31,9 @@ type ChatClient struct {
 	str    *common.BiStream
 
 	subsMu sync.RWMutex
-	subs   []chan<- *server.ServerMessage
+	subs   map[int]chan *server.ServerMessage
 
-	MainSub chan<- *server.ServerMessage
+	MainSub chan *server.ServerMessage
 }
 
 var client *ChatClient
@@ -43,8 +44,8 @@ func InitChatClient(h3c *http.Client) *ChatClient {
 		client:  h3c,
 		str:     nil,
 		subsMu:  sync.RWMutex{},
-		subs:    make([]chan<- *server.ServerMessage, 0),
-		MainSub: make(chan<- *server.ServerMessage, 50),
+		subs:    make(map[int]chan *server.ServerMessage),
+		MainSub: make(chan *server.ServerMessage, 50),
 	}
 	return client
 }
@@ -96,7 +97,7 @@ func (c *ChatClient) Send(msg *server.ClientMessage) error {
 }
 
 func (c *ChatClient) readloop() {
-	var msg server.ServerMessage
+	var msg = &server.ServerMessage{}
 	var msgRaw, lenBytes []byte = make([]byte, 0, 4096), make([]byte, 4)
 	defer c.Close()
 	for connected {
@@ -111,13 +112,13 @@ func (c *ChatClient) readloop() {
 			log.Println("Readloop error, data read:", err)
 			break
 		}
-
-		err = proto.Unmarshal(msgRaw, &msg)
+		err = proto.Unmarshal(msgRaw[:msgLen], msg)
 		if err != nil {
 			log.Println("Readloop error, unmarshal:", err)
 			break
 		}
-		c.dispatch(&msg)
+
+		c.dispatch(msg)
 	}
 }
 
@@ -127,7 +128,8 @@ func (c *ChatClient) dispatch(msg *server.ServerMessage) {
 	c.subsMu.RLock()
 	defer c.subsMu.RUnlock()
 
-	for _, ch := range c.subs {
+	for id, ch := range c.subs {
+		log.Printf("Dispatching message %v to subscriber with id %v", msg.GetSend(), id)
 		select {
 		case ch <- msg:
 		default:
@@ -144,14 +146,22 @@ func (c *ChatClient) heartbeatLoop() {
 	}
 }
 
-func (c *ChatClient) Subscribe() chan<- *server.ServerMessage {
+func (c *ChatClient) Subscribe() (int, chan *server.ServerMessage) {
 	c.subsMu.RLock()
 	defer c.subsMu.RUnlock()
 
-	ch := make(chan<- *server.ServerMessage, 50)
-	c.subs = append(c.subs, ch)
+	ch := make(chan *server.ServerMessage, 50)
+	id := mathrand.Int()
+	c.subs[id] = ch
 
-	return ch
+	return id, ch
+}
+
+func (c *ChatClient) Unsubscribe(id int) {
+	c.subsMu.RLock()
+	defer c.subsMu.RUnlock()
+
+	delete(c.subs, id)
 }
 
 func (c *ChatClient) initChat() ([]byte, error) {
@@ -222,6 +232,7 @@ func chatData(peer *server.UserData, inboxId []byte) (*cli_proto.Chat, []byte, e
 	serial := binary.LittleEndian.Uint64(serialBytes[:])
 	client := &cli_proto.Chat{
 		Events:        make([]*cli_proto.ClientEvent, 0),
+		SerialStart:   serial,
 		CurrentSerial: serial,
 		Key:           key,
 		Peer: &cli_proto.PeerData{

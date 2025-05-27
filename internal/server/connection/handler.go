@@ -73,7 +73,6 @@ func Connection(w http.ResponseWriter, r *http.Request) {
 		switch payload := protoMsg.Payload.(type) {
 		case *server.ClientMessage_Send:
 			chatSend := payload.Send
-			logger.Println(chatSend)
 			handleMsg(chatSend)
 		case *server.ClientMessage_Hb:
 		default:
@@ -88,12 +87,22 @@ func handleMsg(msg *server.SendMsg) {
 		saveToInbox(msg)
 		return
 	}
-	send := &server.ReceiveMsg{
-		EncData: msg.Message,
+	send := &server.ServerMessage{
+		Payload: &server.ServerMessage_Send{
+			Send: &server.ReceiveMsg{
+				Serial:  msg.Serial,
+				InboxId: msg.InboxId,
+				EncData: msg.Message,
+			},
+		},
 	}
 	sendBytes, _ := proto.Marshal(send)
 
-	(*conn).Write(sendBytes)
+	messageLen := len(sendBytes)
+	lenBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(lenBytes, uint32(messageLen))
+
+	(*conn).Write((append(lenBytes, sendBytes...)))
 }
 
 func saveToInbox(msg *server.SendMsg) error {
