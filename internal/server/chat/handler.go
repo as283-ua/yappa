@@ -138,7 +138,19 @@ func GetChatToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(token.EncToken)
+	tokenObj := &server.InboxToken{
+		EncToken:        token.KeyExchangeData,
+		KeyExchangeData: token.KeyExchangeData,
+	}
+
+	tokenProto, err := proto.Marshal(tokenObj)
+	if err != nil {
+		logger.Println("Marshal error:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(tokenProto)
 	w.WriteHeader(http.StatusOK)
 }
 
