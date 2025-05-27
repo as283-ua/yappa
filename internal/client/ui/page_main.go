@@ -7,21 +7,26 @@ import (
 	"math/rand/v2"
 	"os"
 	"strings"
+	"time"
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
+	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type MainPage struct {
-	titleScreen string
-	cursor      int
+	titleScreen  string
+	cursor       int
+	errorMessage string
 
 	options []Option
 	show    bool
 	inputs  Inputs
 
 	save *cli_proto.SaveState
+
+	username string
 }
 
 func (m MainPage) GetOptions() []Option {
@@ -110,11 +115,19 @@ func NewMainPage(save *cli_proto.SaveState) MainPage {
 
 	page.inputs = inputs
 
+	page.username = service.GetUsername()
+
 	return *page
 }
 
+type ConnectStatus bool
+
+func checkConnection() tea.Msg {
+	return ConnectStatus(<-service.GetChatClient().ConnectedC)
+}
+
 func (m MainPage) Init() tea.Cmd {
-	return tea.ClearScreen
+	return tea.Batch(tea.ClearScreen, checkConnection)
 }
 
 func (m MainPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -134,6 +147,13 @@ func (m MainPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = tea.Batch(cmd, cmdTemp)
 			}
 		}
+	case ConnectStatus:
+		cmd = tea.Batch(cmd, checkConnection)
+	case error:
+		m.errorMessage = msg.Error()
+		cmd = tea.Batch(cmd, TimedCmd(5*time.Second, ClearErrorMsg{}))
+	case ClearErrorMsg:
+		m.errorMessage = ""
 	}
 
 	return model, cmd
@@ -142,7 +162,13 @@ func (m MainPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m MainPage) View() string {
 	s := ""
 
-	s += m.titleScreen + "\n\n"
+	s += m.titleScreen
+
+	if m.username != "" {
+		s += "Welcome back, " + m.username + "!\n\n\n"
+	} else {
+		s += "\n\n\n\n"
+	}
 
 	for i, option := range m.options {
 		if i == m.cursor {
@@ -151,6 +177,10 @@ func (m MainPage) View() string {
 			s += "  " + option.String()
 		}
 		s += "\n\n"
+	}
+
+	if m.errorMessage != "" {
+		s += Warning.Render("\n\nError: ") + m.errorMessage
 	}
 
 	s += "\n\n"

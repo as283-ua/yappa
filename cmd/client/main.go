@@ -82,8 +82,9 @@ func main() {
 				log.Fatalf("Failed to add certificate to http client: %v", err)
 			}
 			h3c, _ := service.GetHttp3Client()
+			chatClient := service.InitChatClient(h3c)
 			go func() {
-				err = service.InitChatClient(h3c).Connect()
+				err = chatClient.Connect()
 				if err != nil {
 					log.Printf("Failed opening connection to the server: %v", err)
 				}
@@ -110,5 +111,4 @@ func main() {
 		fmt.Printf("Error: %v", err)
 		os.Exit(1)
 	}
-
 }

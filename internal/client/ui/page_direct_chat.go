@@ -10,6 +10,7 @@ import (
 	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/as283-ua/yappa/internal/client/service"
+	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -204,7 +205,11 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 
-		// encrypt raw
+		encRaw, err := common.Encrypt(raw, m.chat.Key)
+		if err != nil {
+			cmd = tea.Batch(cmd, func() tea.Msg { return err })
+			break
+		}
 
 		err = service.GetChatClient().Send(&server.ClientMessage{
 			Payload: &server.ClientMessage_Send{
@@ -212,7 +217,7 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Serial:   m.chat.CurrentSerial,
 					Receiver: m.chat.Peer.Username,
 					InboxId:  m.chat.Peer.InboxId,
-					Message:  raw,
+					Message:  encRaw,
 				},
 			},
 		})
@@ -232,12 +237,16 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Printf("%t\n", msg.Payload)
 		switch payload := msg.Payload.(type) {
 		case *server.ServerMessage_Send:
-			raw := payload.Send.EncData
+			encRaw := payload.Send.EncData
 
-			// decrypt data
+			raw, err := common.Decrypt(encRaw, m.chat.Key)
+			if err != nil {
+				cmd = tea.Batch(cmd, func() tea.Msg { return err })
+				break
+			}
 
 			peerMsg := &client.ClientEvent{}
-			err := proto.Unmarshal(raw, peerMsg)
+			err = proto.Unmarshal(raw, peerMsg)
 
 			if err != nil {
 				cmd = tea.Batch(cmd, func() tea.Msg { return err })

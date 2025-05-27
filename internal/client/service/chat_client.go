@@ -34,18 +34,21 @@ type ChatClient struct {
 	subs   map[int]chan *server.ServerMessage
 
 	MainSub chan *server.ServerMessage
+
+	connected  bool
+	ConnectedC chan bool
 }
 
 var client *ChatClient
-var connected bool
 
 func InitChatClient(h3c *http.Client) *ChatClient {
 	client = &ChatClient{
-		client:  h3c,
-		str:     nil,
-		subsMu:  sync.RWMutex{},
-		subs:    make(map[int]chan *server.ServerMessage),
-		MainSub: make(chan *server.ServerMessage, 50),
+		client:     h3c,
+		str:        nil,
+		subsMu:     sync.RWMutex{},
+		subs:       make(map[int]chan *server.ServerMessage),
+		MainSub:    make(chan *server.ServerMessage, 50),
+		ConnectedC: make(chan bool, 1),
 	}
 	return client
 }
@@ -54,8 +57,18 @@ func GetChatClient() *ChatClient {
 	return client
 }
 
-func GetConnected() bool {
-	return connected
+func (c *ChatClient) GetConnected() bool {
+	return c.connected
+}
+
+func (c *ChatClient) setConnected(connected bool) {
+	c.connected = connected
+	c.ConnectedC <- c.connected
+	if connected {
+		log.Println("Connected")
+	} else {
+		log.Println("Disconnected")
+	}
 }
 
 func (c *ChatClient) Connect() error {
@@ -69,16 +82,16 @@ func (c *ChatClient) Connect() error {
 	if err != nil {
 		return err
 	}
-	connected = true
-	log.Println("Connected")
+	c.setConnected(true)
 	go c.readloop()
 	go c.heartbeatLoop()
 	return nil
 }
 
 func (c *ChatClient) Close() error {
-	connected = false
-	if c != nil && c.str != nil {
+	if c != nil && c.GetConnected() {
+		log.Println("Closed connection")
+		c.setConnected(false)
 		return c.str.Close()
 	}
 	return nil
@@ -99,23 +112,29 @@ func (c *ChatClient) Send(msg *server.ClientMessage) error {
 	return nil
 }
 
+func (c *ChatClient) readOnce(msg *server.ServerMessage, msgRaw, lenBytes []byte) error {
+	_, err := c.str.Read(lenBytes)
+	if err != nil {
+		return err
+	}
+	msgLen := binary.BigEndian.Uint32(lenBytes[:])
+	_, err = c.str.Read(msgRaw[:msgLen])
+	if err != nil {
+		return err
+	}
+	err = proto.Unmarshal(msgRaw[:msgLen], msg)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *ChatClient) readloop() {
 	var msg = &server.ServerMessage{}
 	var msgRaw, lenBytes []byte = make([]byte, 0, 4096), make([]byte, 4)
 	defer c.Close()
-	for connected {
-		_, err := c.str.Read(lenBytes)
-		if err != nil {
-			log.Println("Readloop error, byte length read:", err)
-			break
-		}
-		msgLen := binary.BigEndian.Uint32(lenBytes[:])
-		_, err = c.str.Read(msgRaw[:msgLen])
-		if err != nil {
-			log.Println("Readloop error, data read:", err)
-			break
-		}
-		err = proto.Unmarshal(msgRaw[:msgLen], msg)
+	for c.connected {
+		err := c.readOnce(msg, msgRaw, lenBytes)
 		if err != nil {
 			log.Println("Readloop error, unmarshal:", err)
 			break
@@ -142,9 +161,12 @@ func (c *ChatClient) dispatch(msg *server.ServerMessage) {
 
 func (c *ChatClient) heartbeatLoop() {
 	ticker := time.NewTicker(20 * time.Second)
-	for connected {
+	for c.connected {
 		<-ticker.C
-		c.Send(&server.ClientMessage{Payload: &server.ClientMessage_Hb{}})
+		err := c.Send(&server.ClientMessage{Payload: &server.ClientMessage_Hb{}})
+		if err != nil {
+			log.Printf("HB error: %v", err)
+		}
 		log.Printf("Heartbeat %v\n", time.Now())
 	}
 }
