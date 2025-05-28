@@ -248,7 +248,7 @@ func (c *ChatClient) fetchChatToken(inboxId []byte) (*server.InboxToken, error) 
 }
 
 func (c *ChatClient) fetchNewMessages(inboxId, token []byte) (*server.ListNewMessages, error) {
-	url := fmt.Sprintf("https://%v/chat/token", settings.CliSettings.ServerHost)
+	url := fmt.Sprintf("https://%v/chat/messages", settings.CliSettings.ServerHost)
 
 	getMsgs := &server.GetNewMessages{
 		InboxId: inboxId,

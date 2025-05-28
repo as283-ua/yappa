@@ -106,31 +106,37 @@ func handleMsg(msg *server.SendMsg) {
 }
 
 func saveToInbox(msg *server.SendMsg) error {
-	receiver, err := auth.Repo.GetUserData(context.Background(), msg.Receiver)
+	tokenObj, err := chat.Repo.GetToken(msg.InboxId)
 	if err != nil {
-		logging.GetLogger().Println("Get user error:", err)
 		return err
 	}
-	kybKey, err := mlkem.NewEncapsulationKey1024(receiver.PubKeyExchange)
-	if err != nil {
-		logging.GetLogger().Println("Kyber encapsulation parse error:", err)
-		return err
-	}
-	key, cipherText := kybKey.Encapsulate()
+	if tokenObj.KeyExchangeData == nil {
+		receiver, err := auth.Repo.GetUserData(context.Background(), msg.Receiver)
+		if err != nil {
+			logging.GetLogger().Println("Get user error:", err)
+			return err
+		}
+		kybKey, err := mlkem.NewEncapsulationKey1024(receiver.PubKeyExchange)
+		if err != nil {
+			logging.GetLogger().Println("Kyber encapsulation parse error:", err)
+			return err
+		}
+		key, cipherText := kybKey.Encapsulate()
 
-	token := make([]byte, 32)
-	rand.Read(token)
+		token := make([]byte, 32)
+		rand.Read(token)
 
-	tokenEnc, err := common.Encrypt(token, key)
-	if err != nil {
-		logging.GetLogger().Println("AES error enc:", err)
-		return err
-	}
+		tokenEnc, err := common.Encrypt(token, key)
+		if err != nil {
+			logging.GetLogger().Println("AES error enc:", err)
+			return err
+		}
 
-	err = chat.Repo.SetInboxToken(msg.InboxId, common.Hash(token), tokenEnc, cipherText)
-	if err != nil {
-		logging.GetLogger().Println("DB error:", err)
-		return err
+		err = chat.Repo.SetInboxToken(msg.InboxId, common.Hash(token), tokenEnc, cipherText)
+		if err != nil {
+			logging.GetLogger().Println("DB error:", err)
+			return err
+		}
 	}
 
 	err = chat.Repo.AddMessage(msg.InboxId, msg.Message)

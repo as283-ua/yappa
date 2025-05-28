@@ -141,7 +141,7 @@ func GetChatToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenObj := &server.InboxToken{
-		EncToken:        token.KeyExchangeData,
+		EncToken:        token.EncToken,
 		KeyExchangeData: token.KeyExchangeData,
 	}
 
@@ -185,7 +185,8 @@ func GetNewMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if bytes.Equal(token.CurrentTokenHash, common.Hash(getMsgs.Token)) {
+	tokenHash := common.Hash(getMsgs.Token)
+	if !bytes.Equal(token.CurrentTokenHash, tokenHash) {
 		http.Error(w, "Bad token", http.StatusUnauthorized)
 		return
 	}
@@ -211,9 +212,16 @@ func GetNewMessages(w http.ResponseWriter, r *http.Request) {
 	w.Write(result)
 	w.WriteHeader(http.StatusOK)
 
+	// this should be a transaction. look into it
 	err = Repo.FlushInbox(getMsgs.InboxId)
 	if err != nil {
 		logger.Println("DB flush inbox error:", err)
+		return
+	}
+
+	err = Repo.SetInboxToken(getMsgs.InboxId, nil, nil, nil)
+	if err != nil {
+		logging.GetLogger().Println("DB error:", err)
 		return
 	}
 }

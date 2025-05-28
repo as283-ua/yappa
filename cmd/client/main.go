@@ -150,6 +150,7 @@ func main() {
 	}()
 	defer func() {
 		save.SaveChats(saveState)
+		log.Println("Saved chats state")
 	}()
 
 	if service.GetUsername() != "" {
