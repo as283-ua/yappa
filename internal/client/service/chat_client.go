@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"log"
-	mathrand "math/rand"
 	"net/http"
 	"net/url"
 	"sync"
@@ -22,7 +21,7 @@ type ChatClient struct {
 	str    *common.BiStream
 
 	subsMu sync.RWMutex
-	subs   map[int]chan *server.ServerMessage
+	subs   map[[32]byte][]chan *server.ServerMessage
 
 	MainSub chan *server.ServerMessage
 
@@ -37,7 +36,7 @@ func InitChatClient(h3c *http.Client) *ChatClient {
 		client:     h3c,
 		str:        nil,
 		subsMu:     sync.RWMutex{},
-		subs:       make(map[int]chan *server.ServerMessage),
+		subs:       make(map[[32]byte][]chan *server.ServerMessage),
 		MainSub:    make(chan *server.ServerMessage, 50),
 		ConnectedC: make(chan bool, 1),
 	}
@@ -141,8 +140,12 @@ func (c *ChatClient) dispatch(msg *server.ServerMessage) {
 	c.subsMu.RLock()
 	defer c.subsMu.RUnlock()
 
-	for id, ch := range c.subs {
-		log.Printf("Dispatching message %v to subscriber with id %v", msg.GetSend(), id)
+	inboxSubs, ok := c.subs[[32]byte(msg.GetSend().InboxId)]
+	if !ok {
+		return
+	}
+
+	for _, ch := range inboxSubs {
 		select {
 		case ch <- msg:
 		default:
@@ -162,20 +165,32 @@ func (c *ChatClient) heartbeatLoop() {
 	}
 }
 
-func (c *ChatClient) Subscribe() (int, chan *server.ServerMessage) {
+func (c *ChatClient) Subscribe(inboxId [32]byte) (int, chan *server.ServerMessage) {
 	c.subsMu.RLock()
 	defer c.subsMu.RUnlock()
 
+	inboxSubs, ok := c.subs[inboxId]
+	if !ok {
+		inboxSubs = make([]chan *server.ServerMessage, 0)
+	}
 	ch := make(chan *server.ServerMessage, 50)
-	id := mathrand.Int()
-	c.subs[id] = ch
+	inboxSubs = append(inboxSubs, ch)
+	c.subs[inboxId] = inboxSubs
+	id := len(c.subs[inboxId])
 
 	return id, ch
 }
 
-func (c *ChatClient) Unsubscribe(id int) {
+func (c *ChatClient) Unsubscribe(inboxId [32]byte, id int) {
 	c.subsMu.RLock()
 	defer c.subsMu.RUnlock()
 
-	delete(c.subs, id)
+	inboxSubs, ok := c.subs[inboxId]
+	if !ok {
+		return
+	}
+	if id < 0 || id >= len(inboxSubs) {
+		return
+	}
+	inboxSubs[id] = nil
 }

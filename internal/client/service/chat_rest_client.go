@@ -297,32 +297,38 @@ func (c *ChatClient) fetchNewMessages(inboxId, token []byte) (*server.ListNewMes
 	return msgs, nil
 }
 
-func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) error {
+func (c *ChatClient) GetNewChats(saveState *cli_proto.SaveState) error {
 	chats, err := c.fetchNewChats()
 	if err != nil {
 		return err
 	}
+	errs := common.MultiError{Errors: make([]error, 0)}
 	for _, chat := range chats.Chats {
 		key, err := GetMlkemDecap().Decapsulate(chat.KeyExchangeData)
 		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 		inboxId, err := common.Decrypt(chat.EncInboxCode, key)
 		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 		sender, err := common.Decrypt(chat.EncSender, key)
 		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 		serialB, err := common.Decrypt(chat.EncSerial, key)
 		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 
 		serial := binary.LittleEndian.Uint64(serialB[:])
 		userData, err := UsersClient{Client: c.client}.GetUserData(string(sender))
 		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 
@@ -340,35 +346,46 @@ func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) error {
 		})
 	}
 
+	return errs.NilOrError()
+}
+
+func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) error {
+	errs := common.MultiError{Errors: make([]error, 0)}
 	for _, chat := range saveState.Chats {
 		tokenObj, err := c.fetchChatToken(chat.Peer.InboxId)
 		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 		tokenKey, err := GetMlkemDecap().Decapsulate(tokenObj.KeyExchangeData)
 		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 		token, err := common.Decrypt(tokenObj.EncToken, tokenKey)
 		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 		messages, err := c.fetchNewMessages(chat.Peer.InboxId, token)
 		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 		for _, encMsg := range messages.Msgs {
 			msg, err := common.Decrypt(encMsg, chat.Key)
 			if err != nil {
+				errs.Errors = append(errs.Errors, err)
 				continue
 			}
 			event := &cli_proto.ClientEvent{}
 			err = proto.Unmarshal(msg, event)
 			if err != nil {
+				errs.Errors = append(errs.Errors, err)
 				continue
 			}
 			save.NewEvent(saveState, chat, event)
 		}
 	}
-	return nil
+	return errs.NilOrError()
 }

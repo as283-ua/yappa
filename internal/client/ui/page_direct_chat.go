@@ -82,20 +82,17 @@ func NewChatPage(save *client.SaveState, prev tea.Model, user *server.UserData) 
 	inputs.Add(QUIT)
 	inputs.Add(HELP)
 
-	subId, subscription := service.GetChatClient().Subscribe()
-
 	return ChatPage{
-		save:         save,
-		prev:         prev,
-		peer:         user,
-		viewport:     viewport.New(120, 20),
-		textbox:      textbox,
-		selfStyle:    lipgloss.NewStyle().Foreground(lipgloss.Color("#ff8")),
-		peerStyle:    lipgloss.NewStyle().Foreground(lipgloss.Color("#45f")),
-		inputs:       inputs,
-		chat:         &client.Chat{},
-		subId:        subId,
-		subscription: subscription,
+		save:      save,
+		prev:      prev,
+		peer:      user,
+		viewport:  viewport.New(120, 20),
+		textbox:   textbox,
+		selfStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#ff8")),
+		peerStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#45f")),
+		inputs:    inputs,
+		chat:      &client.Chat{},
+		subId:     -1,
 	}
 }
 
@@ -184,6 +181,14 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.viewport.SetContent(m.vpContent)
 		m.viewport.GotoBottom()
+
+		subId, subscription := service.GetChatClient().Subscribe([32]byte(m.chat.Peer.InboxId))
+		if m.subId < 0 {
+			service.GetChatClient().Unsubscribe([32]byte(m.chat.Peer.InboxId), m.subId)
+		}
+		m.subId = subId
+		m.subscription = subscription
+		cmd = tea.Batch(cmd, m.waitMessage)
 	case MsgSend:
 		txt := strings.TrimSpace(m.textbox.Value())
 		if txt == "" {
