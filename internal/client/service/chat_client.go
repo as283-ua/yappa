@@ -130,6 +130,7 @@ func (c *ChatClient) readloop() {
 }
 
 func (c *ChatClient) dispatch(msg *server.ServerMessage) {
+	log.Printf("Received %v", msg)
 	c.MainSub <- msg
 
 	c.subsMu.RLock()

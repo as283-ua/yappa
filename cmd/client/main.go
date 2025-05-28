@@ -8,11 +8,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/as283-ua/yappa/api/gen/client"
+	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/as283-ua/yappa/internal/client/ui"
+	"github.com/as283-ua/yappa/pkg/common"
 	tea "github.com/charmbracelet/bubbletea"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -93,6 +97,7 @@ func main() {
 				err = chatClient.Connect()
 				if err != nil {
 					log.Printf("Failed opening connection to the server: %v", err)
+					return
 				}
 			}()
 			defer service.GetChatClient().Close()
@@ -107,6 +112,42 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load saved chats: %v", err)
 	}
+
+	go func() {
+		chatCli := service.GetChatClient()
+		chatMap := make(map[[32]byte]*client.Chat)
+		<-chatCli.ConnectedC
+		for chatCli.GetConnected() {
+			if chatCli.MainSub == nil {
+				log.Fatal("Bruh")
+			}
+			msg := <-chatCli.MainSub
+			switch payload := msg.Payload.(type) {
+			case *server.ServerMessage_Send:
+				encRaw := payload.Send.EncData
+				chat, ok := chatMap[[32]byte(payload.Send.InboxId)]
+				if !ok {
+					chat = save.DirectChat(saveState, payload.Send.InboxId)
+					chatMap[[32]byte(payload.Send.InboxId)] = chat
+				}
+
+				raw, err := common.Decrypt(encRaw, chat.Key)
+				if err != nil {
+					log.Println(err)
+					break
+				}
+
+				peerMsg := &client.ClientEvent{}
+				err = proto.Unmarshal(raw, peerMsg)
+
+				if err != nil {
+					log.Println(err)
+					break
+				}
+				save.NewEvent(saveState, chat, peerMsg)
+			}
+		}
+	}()
 	defer func() {
 		save.SaveChats(saveState)
 	}()

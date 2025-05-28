@@ -120,7 +120,7 @@ func (m ChatPage) Previous() tea.Model {
 func loadChat(saveState *client.SaveState, peer *server.UserData) tea.Cmd {
 	return func() tea.Msg {
 		log.Println("Loading chat")
-		chat := save.DirectChat(saveState, peer.Username)
+		chat := save.DirectChatByUser(saveState, peer.Username)
 		var err error
 		if chat == nil {
 			log.Println("First time chatting, retrieving data...")
@@ -239,7 +239,6 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.GotoBottom()
 		}
 	case *server.ServerMessage:
-		log.Printf("%t\n", msg.Payload)
 		switch payload := msg.Payload.(type) {
 		case *server.ServerMessage_Send:
 			encRaw := payload.Send.EncData
@@ -257,7 +256,6 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = tea.Batch(cmd, func() tea.Msg { return err })
 				break
 			}
-			save.NewEvent(m.save, m.chat, peerMsg)
 			msgTxt := messageToString(peerMsg, m.peerStyle)
 			if msgTxt != "" {
 				m.vpContent += msgTxt + "\n"

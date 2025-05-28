@@ -1,6 +1,7 @@
 package save
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -63,7 +64,7 @@ func SaveChats(save *client.SaveState) error {
 }
 
 func NewDirectChat(save *client.SaveState, chat *client.Chat) {
-	c := DirectChat(save, chat.Peer.Username)
+	c := DirectChat(save, chat.Peer.InboxId)
 	if c == nil {
 		log.Printf("Added new chat with %v\n", chat.Peer.Username)
 		save.Chats = append(save.Chats, chat)
@@ -73,10 +74,20 @@ func NewDirectChat(save *client.SaveState, chat *client.Chat) {
 
 func NewEvent(save *client.SaveState, chat *client.Chat, event *client.ClientEvent) {
 	chat.Events = append(chat.Events, event)
+	log.Printf("Saved event: %v", event)
 	// todo: handle key change here
 }
 
-func DirectChat(save *client.SaveState, username string) *client.Chat {
+func DirectChat(save *client.SaveState, inboxId []byte) *client.Chat {
+	for _, v := range save.Chats {
+		if bytes.Equal(v.Peer.InboxId, inboxId) {
+			return v
+		}
+	}
+	return nil
+}
+
+func DirectChatByUser(save *client.SaveState, username string) *client.Chat {
 	for _, v := range save.Chats {
 		if v.Peer.Username == username {
 			return v
