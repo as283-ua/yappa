@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
 )
@@ -96,6 +97,7 @@ func UseCertificate(cert, key string) error {
 	}
 
 	username = parsedCert.Subject.CommonName
+	save.SetSavepathUsername(username)
 
 	return nil
 }

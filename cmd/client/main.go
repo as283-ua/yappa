@@ -109,8 +109,18 @@ func main() {
 	}
 	defer func() {
 		save.SaveChats(saveState)
-		log.Println("Saved chat")
 	}()
+
+	if service.GetUsername() != "" {
+		err = service.GetChatClient().GetNewChats(saveState)
+		if err != nil {
+			log.Printf("Errors while retrieving new chats: %v", err)
+		}
+		err = service.GetChatClient().GetNewMessages(saveState)
+		if err != nil {
+			log.Printf("Errors while retrieving new messages: %v", err)
+		}
+	}
 
 	log.Println("Started client")
 	p := tea.NewProgram(ui.NewMainPage(saveState))

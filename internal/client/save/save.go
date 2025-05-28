@@ -12,8 +12,13 @@ import (
 
 const WAL_PATH = "data.wal"
 
+var username string
+
+func SetSavepathUsername(name string) {
+	username = name
+}
 func savePath() string {
-	return "chats_.data"
+	return fmt.Sprintf("chats_%v.data", username)
 }
 
 func LoadChats() (*client.SaveState, error) {
@@ -43,6 +48,10 @@ func LoadChats() (*client.SaveState, error) {
 }
 
 func SaveChats(save *client.SaveState) error {
+	if username == "" {
+		return nil
+	}
+
 	saveRaw, err := proto.Marshal(save)
 	if err != nil {
 		return err

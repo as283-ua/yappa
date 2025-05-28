@@ -38,7 +38,7 @@ func InitChatClient(h3c *http.Client) *ChatClient {
 		subsMu:     sync.RWMutex{},
 		subs:       make(map[[32]byte][]chan *server.ServerMessage),
 		MainSub:    make(chan *server.ServerMessage, 50),
-		ConnectedC: make(chan bool, 1),
+		ConnectedC: make(chan bool, 50),
 	}
 	return client
 }
@@ -54,11 +54,6 @@ func (c *ChatClient) GetConnected() bool {
 func (c *ChatClient) setConnected(connected bool) {
 	c.connected = connected
 	c.ConnectedC <- c.connected
-	if connected {
-		log.Println("Connected")
-	} else {
-		log.Println("Disconnected")
-	}
 }
 
 func (c *ChatClient) Connect() error {
@@ -69,6 +64,7 @@ func (c *ChatClient) Connect() error {
 	}
 
 	c.str, err = common.Http3Stream(context.Background(), u, c.client.Transport.(*http3.Transport), http.Header{})
+
 	if err != nil {
 		return err
 	}
@@ -80,7 +76,6 @@ func (c *ChatClient) Connect() error {
 
 func (c *ChatClient) Close() error {
 	if c != nil && c.GetConnected() {
-		log.Println("Closed connection")
 		c.setConnected(false)
 		return c.str.Close()
 	}

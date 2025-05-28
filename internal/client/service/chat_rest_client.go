@@ -357,13 +357,19 @@ func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) error {
 			errs.Errors = append(errs.Errors, err)
 			continue
 		}
+		if len(tokenObj.KeyExchangeData) == 0 {
+			// nothing new to retrieve
+			continue
+		}
 		tokenKey, err := GetMlkemDecap().Decapsulate(tokenObj.KeyExchangeData)
 		if err != nil {
+			// probably the other user's still unretrieved messages
 			errs.Errors = append(errs.Errors, err)
 			continue
 		}
 		token, err := common.Decrypt(tokenObj.EncToken, tokenKey)
 		if err != nil {
+			// corrupt token
 			errs.Errors = append(errs.Errors, err)
 			continue
 		}
