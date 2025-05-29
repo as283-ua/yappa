@@ -218,7 +218,9 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = tea.Batch(cmd, func() tea.Msg { return err })
 			break
 		}
+		log.Printf("Before ratchet %v %v\n", m.chat.CurrentSerial, m.chat.Key)
 		save.NewEvent(m.chat, m.chat.CurrentSerial+1, service.Ratchet(m.chat.Key), event)
+		log.Printf("After ratchet %v %v\nThis one was sent", m.chat.CurrentSerial, m.chat.Key)
 		m.textbox.SetValue("")
 		msgTxt := messageToString(event, m.selfStyle)
 		if msgTxt != "" {

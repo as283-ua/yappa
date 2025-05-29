@@ -2,6 +2,7 @@ package service
 
 import (
 	"crypto/sha256"
+	"log"
 	"time"
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
@@ -19,11 +20,10 @@ func Ratchet(v []byte) []byte {
 }
 
 func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*cli_proto.ClientEvent, uint64, error) {
-	var usedKey []byte
+	var usedKey []byte = chat.Key
 	usedSerial := chat.CurrentSerial
 	if chat.CurrentSerial == msg.Send.Serial {
 		usedKey = chat.Key
-		chat.CurrentSerial++
 	} else {
 		usedSerial = msg.Send.Serial
 		// ratchet should not extend more than MAX_RATCHET_CYCLE. should have set the new key with mlkem
@@ -33,7 +33,9 @@ func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*
 
 		// ratchet until we get key for serial of msg
 		for i := chat.CurrentSerial; i < msg.Send.Serial; i++ {
+			log.Printf("Before ratchet decrypt ooo %v %v", i, usedKey)
 			usedKey = Ratchet(usedKey)
+			log.Printf("After ratchet decrypt ooo %v %v", i+1, usedKey)
 		}
 	}
 	encRaw := msg.Send.EncData

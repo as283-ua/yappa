@@ -136,10 +136,12 @@ func main() {
 					}
 					var newSerial uint64 = chat.CurrentSerial
 					var newKey []byte = chat.Key
+					log.Printf("Before ratchet %v %v", newSerial, newKey)
 					if chat.CurrentSerial == usedSerial { // ratchet if order was kept, keep previous key and current serial otherwise
 						newSerial++
 						newKey = service.Ratchet(chat.Key)
 					}
+					log.Printf("After ratchet %v %v\nThis one was received live", newSerial, newKey)
 					save.NewEvent(chat, newSerial, newKey, event)
 				}
 			}
@@ -167,10 +169,12 @@ func main() {
 			for _, evWMeta := range events {
 				var newSerial uint64 = chat.CurrentSerial
 				var newKey []byte = chat.Key
+				log.Printf("Before ratchet %v %v", newSerial, newKey)
 				if chat.CurrentSerial == evWMeta.Serial { // ratchet if order was kept, keep previous key and current serial otherwise
 					newSerial++
 					newKey = service.Ratchet(chat.Key)
 				}
+				log.Printf("After ratchet %v %v\nThis one was fetched", newSerial, newKey)
 				save.NewEvent(chat, newSerial, newKey, evWMeta.Event)
 			}
 		}
