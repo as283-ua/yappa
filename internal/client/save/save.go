@@ -72,7 +72,7 @@ func NewDirectChat(save *client.SaveState, chat *client.Chat) {
 	}
 }
 
-func NewEvent(save *client.SaveState, chat *client.Chat, event *client.ClientEvent) {
+func NewEvent(chat *client.Chat, event *client.ClientEvent) {
 	chat.Events = append(chat.Events, event)
 	log.Printf("Saved event: %v", event)
 	// todo: handle key change here

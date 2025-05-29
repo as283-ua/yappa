@@ -14,7 +14,6 @@ import (
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
 	"github.com/as283-ua/yappa/api/gen/server"
-	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/quic-go/quic-go/http3"
@@ -297,12 +296,13 @@ func (c *ChatClient) fetchNewMessages(inboxId, token []byte) (*server.ListNewMes
 	return msgs, nil
 }
 
-func (c *ChatClient) GetNewChats(saveState *cli_proto.SaveState) error {
+func (c *ChatClient) GetNewChats(saveState *cli_proto.SaveState) ([]*cli_proto.Chat, error) {
 	chats, err := c.fetchNewChats()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	errs := common.MultiError{Errors: make([]error, 0)}
+	newChats := make([]*cli_proto.Chat, 0)
 	for _, chat := range chats.Chats {
 		key, err := GetMlkemDecap().Decapsulate(chat.KeyExchangeData)
 		if err != nil {
@@ -331,8 +331,7 @@ func (c *ChatClient) GetNewChats(saveState *cli_proto.SaveState) error {
 			errs.Errors = append(errs.Errors, err)
 			continue
 		}
-
-		save.NewDirectChat(saveState, &cli_proto.Chat{
+		newChats = append(newChats, &cli_proto.Chat{
 			Events:        make([]*cli_proto.ClientEvent, 0),
 			SerialStart:   serial,
 			CurrentSerial: serial,
@@ -346,11 +345,12 @@ func (c *ChatClient) GetNewChats(saveState *cli_proto.SaveState) error {
 		})
 	}
 
-	return errs.NilOrError()
+	return newChats, errs.NilOrError()
 }
 
-func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) error {
+func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) (map[*cli_proto.Chat][]*cli_proto.ClientEvent, error) {
 	errs := common.MultiError{Errors: make([]error, 0)}
+	chats := make(map[*cli_proto.Chat][]*cli_proto.ClientEvent)
 	for _, chat := range saveState.Chats {
 		tokenObj, err := c.fetchChatToken(chat.Peer.InboxId)
 		if err != nil {
@@ -373,6 +373,8 @@ func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) error {
 			errs.Errors = append(errs.Errors, err)
 			continue
 		}
+		chats[chat] = make([]*cli_proto.ClientEvent, 0)
+
 		messages, err := c.fetchNewMessages(chat.Peer.InboxId, token)
 		if err != nil {
 			errs.Errors = append(errs.Errors, err)
@@ -390,8 +392,8 @@ func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) error {
 				errs.Errors = append(errs.Errors, err)
 				continue
 			}
-			save.NewEvent(saveState, chat, event)
+			chats[chat] = append(chats[chat], event)
 		}
 	}
-	return errs.NilOrError()
+	return chats, errs.NilOrError()
 }

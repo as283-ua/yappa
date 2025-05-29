@@ -24,7 +24,7 @@ func messageToString(m *client.ClientEvent, senderStyle lipgloss.Style) string {
 		return ""
 	}
 	t := time.Unix(int64(m.Timestamp), 0).UTC()
-	return fmt.Sprintf("%s - %s\n%s\n", senderStyle.Render("@"+m.Sender), t.Format("2 Jan 2006 15:04:05"), msg.Message.Msg)
+	return fmt.Sprintf("%s - %s\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), msg.Message.Msg)
 }
 
 type ChatPage struct {
@@ -82,11 +82,19 @@ func NewChatPage(save *client.SaveState, prev tea.Model, user *server.UserData) 
 	inputs.Add(QUIT)
 	inputs.Add(HELP)
 
+	vp := viewport.New(120, 20)
+	vp.KeyMap.Down.SetKeys("down")
+	vp.KeyMap.HalfPageDown.SetKeys("ctrl+down")
+	vp.KeyMap.PageDown.SetKeys("pgdown")
+	vp.KeyMap.Up.SetKeys("up")
+	vp.KeyMap.HalfPageUp.SetKeys("ctrl+up")
+	vp.KeyMap.PageUp.SetKeys("pgup")
+
 	return ChatPage{
 		save:      save,
 		prev:      prev,
 		peer:      user,
-		viewport:  viewport.New(120, 20),
+		viewport:  vp,
 		textbox:   textbox,
 		selfStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#ff8")),
 		peerStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#45f")),
@@ -230,7 +238,7 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = tea.Batch(cmd, func() tea.Msg { return err })
 			break
 		}
-		save.NewEvent(m.save, m.chat, event)
+		save.NewEvent(m.chat, event)
 		m.textbox.SetValue("")
 		msgTxt := messageToString(event, m.selfStyle)
 		if msgTxt != "" {
@@ -258,8 +266,15 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			msgTxt := messageToString(peerMsg, m.peerStyle)
 			if msgTxt != "" {
+				goToBottom := false
+				if m.viewport.AtBottom() {
+					goToBottom = true
+				}
 				m.vpContent += msgTxt + "\n"
 				m.viewport.SetContent(m.vpContent)
+				if goToBottom {
+					m.viewport.GotoBottom()
+				}
 			}
 		}
 		cmd = tea.Batch(cmd, m.waitMessage)

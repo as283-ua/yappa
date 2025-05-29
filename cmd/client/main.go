@@ -118,9 +118,6 @@ func main() {
 		chatMap := make(map[[32]byte]*client.Chat)
 		<-chatCli.ConnectedC
 		for chatCli.GetConnected() {
-			if chatCli.MainSub == nil {
-				log.Fatal("Bruh")
-			}
 			msg := <-chatCli.MainSub
 			switch payload := msg.Payload.(type) {
 			case *server.ServerMessage_Send:
@@ -144,7 +141,7 @@ func main() {
 					log.Println(err)
 					break
 				}
-				save.NewEvent(saveState, chat, peerMsg)
+				save.NewEvent(chat, peerMsg)
 			}
 		}
 	}()
@@ -154,13 +151,22 @@ func main() {
 	}()
 
 	if service.GetUsername() != "" {
-		err = service.GetChatClient().GetNewChats(saveState)
+		newChats, err := service.GetChatClient().GetNewChats(saveState)
 		if err != nil {
 			log.Printf("Errors while retrieving new chats: %v", err)
 		}
-		err = service.GetChatClient().GetNewMessages(saveState)
+		for _, chat := range newChats {
+			save.NewDirectChat(saveState, chat)
+		}
+
+		newMsgs, err := service.GetChatClient().GetNewMessages(saveState)
 		if err != nil {
 			log.Printf("Errors while retrieving new messages: %v", err)
+		}
+		for chat, events := range newMsgs {
+			for _, ev := range events {
+				save.NewEvent(chat, ev)
+			}
 		}
 	}
 

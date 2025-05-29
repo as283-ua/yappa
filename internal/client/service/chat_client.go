@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	cli_proto "github.com/as283-ua/yappa/api/gen/client"
 	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/as283-ua/yappa/pkg/common"
@@ -29,10 +30,10 @@ type ChatClient struct {
 	ConnectedC chan bool
 }
 
-var client *ChatClient
+var chatClient *ChatClient
 
 func InitChatClient(h3c *http.Client) *ChatClient {
-	client = &ChatClient{
+	chatClient = &ChatClient{
 		client:     h3c,
 		str:        nil,
 		subsMu:     sync.RWMutex{},
@@ -40,11 +41,11 @@ func InitChatClient(h3c *http.Client) *ChatClient {
 		MainSub:    make(chan *server.ServerMessage, 50),
 		ConnectedC: make(chan bool, 50),
 	}
-	return client
+	return chatClient
 }
 
 func GetChatClient() *ChatClient {
-	return client
+	return chatClient
 }
 
 func (c *ChatClient) GetConnected() bool {
@@ -189,4 +190,36 @@ func (c *ChatClient) Unsubscribe(inboxId [32]byte, id int) {
 		return
 	}
 	inboxSubs[id] = nil
+}
+
+func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*cli_proto.ClientEvent, uint64, []byte, error) {
+	var key []byte
+	var currentSerial = chat.CurrentSerial + 1
+	if chat.CurrentSerial+1 == msg.Send.Serial {
+		key = chat.Key
+		currentSerial = msg.Send.Serial
+	} else {
+		// ratchet should not extend more than MAX_RATCHET_CYCLE. should have set the new key with mlkem
+		// if msg.Send.Serial == chat.CurrentSerial+save.MAX_RATCHET_CYCLE {
+		// 	return nil, fmt.Errorf("serial number for message (%v) exceeded MAX RATCHET CYCLE (%v)", msg.Send.Serial, save.MAX_RATCHET_CYCLE)
+		// }
+
+		// ratchet until we get key for serial of msg
+		for i := chat.CurrentSerial + 1; i < msg.Send.Serial; i++ {
+			key = Ratchet(key)
+		}
+	}
+	encRaw := msg.Send.EncData
+	raw, err := common.Decrypt(encRaw, key)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+
+	peerMsg := &cli_proto.ClientEvent{}
+	err = proto.Unmarshal(raw, peerMsg)
+
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	return peerMsg, currentSerial, key, nil
 }
