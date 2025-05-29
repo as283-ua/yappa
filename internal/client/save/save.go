@@ -72,10 +72,12 @@ func NewDirectChat(save *client.SaveState, chat *client.Chat) {
 	}
 }
 
-func NewEvent(chat *client.Chat, event *client.ClientEvent) {
+func NewEvent(chat *client.Chat, currentSerial uint64, key []byte, event *client.ClientEvent) {
 	chat.Events = append(chat.Events, event)
+	chat.CurrentSerial = currentSerial
+	chat.Key = key
+
 	log.Printf("Saved event: %v", event)
-	// todo: handle key change here
 }
 
 func DirectChat(save *client.SaveState, inboxId []byte) *client.Chat {

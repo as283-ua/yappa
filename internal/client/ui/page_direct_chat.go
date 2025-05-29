@@ -202,23 +202,7 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if txt == "" {
 			break
 		}
-		event := &client.ClientEvent{
-			Timestamp: uint64(time.Now().UTC().Unix()),
-			Serial:    m.chat.CurrentSerial,
-			Sender:    service.GetUsername(),
-			Payload: &client.ClientEvent_Message{
-				Message: &client.ChatMessage{
-					Msg: txt,
-				},
-			},
-		}
-		raw, err := proto.Marshal(event)
-		if err != nil {
-			cmd = tea.Batch(cmd, func() tea.Msg { return err })
-			break
-		}
-
-		encRaw, err := common.Encrypt(raw, m.chat.Key)
+		encMsg, event, key, err := service.EncryptMessageForPeer(m.chat, txt)
 		if err != nil {
 			cmd = tea.Batch(cmd, func() tea.Msg { return err })
 			break
@@ -226,19 +210,14 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		err = service.GetChatClient().Send(&server.ClientMessage{
 			Payload: &server.ClientMessage_Send{
-				Send: &server.SendMsg{
-					Serial:   m.chat.CurrentSerial,
-					Receiver: m.chat.Peer.Username,
-					InboxId:  m.chat.Peer.InboxId,
-					Message:  encRaw,
-				},
+				Send: encMsg,
 			},
 		})
 		if err != nil {
 			cmd = tea.Batch(cmd, func() tea.Msg { return err })
 			break
 		}
-		save.NewEvent(m.chat, event)
+		save.NewEvent(m.chat, encMsg.Serial, key, event)
 		m.textbox.SetValue("")
 		msgTxt := messageToString(event, m.selfStyle)
 		if msgTxt != "" {

@@ -48,11 +48,11 @@ WHERE code = $1;
 
 ---- CHAT MESSAGES
 -- name: AddMessage :exec
-INSERT INTO chat_inbox_messages (inbox_code, enc_msg) 
-VALUES ($1, $2);
+INSERT INTO chat_inbox_messages (inbox_code, serial_n, enc_msg) 
+VALUES ($1, $2, $3);
 
 -- name: GetMessages :many
-SELECT enc_msg
+SELECT enc_msg, serial_n
 FROM chat_inbox_messages
 WHERE inbox_code = $1;
 

@@ -30,6 +30,7 @@ CREATE TABLE chat_inboxes (
 
 CREATE TABLE chat_inbox_messages (
     id SERIAL PRIMARY KEY,
+    serial_n BIGINT NOT NULL,
     inbox_code BYTEA NOT NULL,
     enc_msg BYTEA NOT NULL,
     FOREIGN KEY (inbox_code) REFERENCES chat_inboxes(code)

@@ -86,8 +86,13 @@ message GetNewMessages {
     bytes token = 2;
 }
 
+message Message {
+    bytes msgs = 1;
+    uint64 serial = 2;
+}
+
 message ListNewMessages {
-    repeated bytes msgs = 1;
+    repeated Message msgs = 1;
 }
 
 message Usernames {

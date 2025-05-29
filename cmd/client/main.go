@@ -14,9 +14,7 @@ import (
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/as283-ua/yappa/internal/client/ui"
-	"github.com/as283-ua/yappa/pkg/common"
 	tea "github.com/charmbracelet/bubbletea"
-	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -121,27 +119,17 @@ func main() {
 			msg := <-chatCli.MainSub
 			switch payload := msg.Payload.(type) {
 			case *server.ServerMessage_Send:
-				encRaw := payload.Send.EncData
 				chat, ok := chatMap[[32]byte(payload.Send.InboxId)]
 				if !ok {
 					chat = save.DirectChat(saveState, payload.Send.InboxId)
 					chatMap[[32]byte(payload.Send.InboxId)] = chat
 				}
-
-				raw, err := common.Decrypt(encRaw, chat.Key)
+				event, currentSerial, key, err := service.DecryptPeerMessage(chat, payload)
 				if err != nil {
-					log.Println(err)
+					log.Println("Error decrypting peer msg:", err)
 					break
 				}
-
-				peerMsg := &client.ClientEvent{}
-				err = proto.Unmarshal(raw, peerMsg)
-
-				if err != nil {
-					log.Println(err)
-					break
-				}
-				save.NewEvent(chat, peerMsg)
+				save.NewEvent(chat, currentSerial, key, event)
 			}
 		}
 	}()
