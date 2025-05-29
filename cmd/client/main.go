@@ -23,6 +23,7 @@ var (
 	serverHost *string
 	caHost     *string
 	logsDir    *string
+	fetchOnly  *bool
 )
 
 func main() {
@@ -33,6 +34,7 @@ func main() {
 	serverHost = flag.String("server", "yappa.io:4433", "Yappa chat server ip and port")
 	caHost = flag.String("ca", "yappa.io:4434", "Yappa CA server ip and port")
 	logsDir = flag.String("logs", "logs/cli/", "Error logs directory.\n\"/dev/null\" or \"null\" to suppress error logs.\n\"-\" to show errors on-screen (buggy)")
+	fetchOnly = flag.Bool("fetch", false, "Path to certs directory")
 
 	flag.Parse()
 
@@ -73,6 +75,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create http client: %v", err)
 	}
+	h3c, _ := service.GetHttp3Client()
+	chatClient := service.InitChatClient(h3c)
 
 	_, err = os.Stat(settings.CliSettings.CertDir + "yappa.crt")
 	if err == nil {
@@ -89,16 +93,16 @@ func main() {
 				log.Fatalf("Failed getting private mlkem key: %v", err)
 			}
 
-			h3c, _ := service.GetHttp3Client()
-			chatClient := service.InitChatClient(h3c)
-			go func() {
-				err = chatClient.Connect()
-				if err != nil {
-					log.Printf("Failed opening connection to the server: %v", err)
-					return
-				}
-			}()
-			defer service.GetChatClient().Close()
+			if !*fetchOnly {
+				go func() {
+					err = chatClient.Connect()
+					if err != nil {
+						log.Printf("Failed opening connection to the server: %v", err)
+						return
+					}
+				}()
+				defer service.GetChatClient().Close()
+			}
 		} else {
 			log.Fatal("Certificate found but missing private key")
 		}
@@ -111,28 +115,36 @@ func main() {
 		log.Fatalf("Failed to load saved chats: %v", err)
 	}
 
-	go func() {
-		chatCli := service.GetChatClient()
-		chatMap := make(map[[32]byte]*client.Chat)
-		<-chatCli.ConnectedC
-		for chatCli.GetConnected() {
-			msg := <-chatCli.MainSub
-			switch payload := msg.Payload.(type) {
-			case *server.ServerMessage_Send:
-				chat, ok := chatMap[[32]byte(payload.Send.InboxId)]
-				if !ok {
-					chat = save.DirectChat(saveState, payload.Send.InboxId)
-					chatMap[[32]byte(payload.Send.InboxId)] = chat
+	if !*fetchOnly {
+		go func() {
+			chatCli := service.GetChatClient()
+			chatMap := make(map[[32]byte]*client.Chat)
+			<-service.ConnectedC
+			for chatCli.GetConnected() {
+				msg := <-chatCli.MainSub
+				switch payload := msg.Payload.(type) {
+				case *server.ServerMessage_Send:
+					chat, ok := chatMap[[32]byte(payload.Send.InboxId)]
+					if !ok {
+						chat = save.DirectChat(saveState, payload.Send.InboxId)
+						chatMap[[32]byte(payload.Send.InboxId)] = chat
+					}
+					event, usedSerial, err := service.DecryptPeerMessage(chat, payload)
+					if err != nil {
+						log.Println("Error decrypting peer msg:", err)
+						break
+					}
+					var newSerial uint64 = chat.CurrentSerial
+					var newKey []byte = chat.Key
+					if chat.CurrentSerial == usedSerial { // ratchet if order was kept, keep previous key and current serial otherwise
+						newSerial++
+						newKey = service.Ratchet(chat.Key)
+					}
+					save.NewEvent(chat, newSerial, newKey, event)
 				}
-				event, currentSerial, key, err := service.DecryptPeerMessage(chat, payload)
-				if err != nil {
-					log.Println("Error decrypting peer msg:", err)
-					break
-				}
-				save.NewEvent(chat, currentSerial, key, event)
 			}
-		}
-	}()
+		}()
+	}
 	defer func() {
 		save.SaveChats(saveState)
 		log.Println("Saved chats state")
@@ -152,10 +164,21 @@ func main() {
 			log.Printf("Errors while retrieving new messages: %v", err)
 		}
 		for chat, events := range newMsgs {
-			for _, ev := range events {
-				save.NewEvent(chat, ev)
+			for _, evWMeta := range events {
+				var newSerial uint64 = chat.CurrentSerial
+				var newKey []byte = chat.Key
+				if chat.CurrentSerial == evWMeta.Serial { // ratchet if order was kept, keep previous key and current serial otherwise
+					newSerial++
+					newKey = service.Ratchet(chat.Key)
+				}
+				save.NewEvent(chat, newSerial, newKey, evWMeta.Event)
 			}
 		}
+	}
+
+	if *fetchOnly {
+		log.Println("Fetch only done")
+		return
 	}
 
 	log.Println("Started client")

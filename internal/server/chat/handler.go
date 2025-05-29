@@ -202,7 +202,12 @@ func GetNewMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	msgsProto := &server.ListNewMessages{}
-	msgsProto.Msgs = append(msgsProto.Msgs, msgs...)
+	for _, msg := range msgs {
+		msgsProto.Msgs = append(msgsProto.Msgs, &server.Message{
+			EncMsg: msg.EncMsg,
+			Serial: uint64(msg.SerialN),
+		})
+	}
 	result, err := proto.Marshal(msgsProto)
 	if err != nil {
 		logger.Println("Marshal error:", err)

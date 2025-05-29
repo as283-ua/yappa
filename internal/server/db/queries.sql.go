@@ -10,18 +10,19 @@ import (
 )
 
 const addMessage = `-- name: AddMessage :exec
-INSERT INTO chat_inbox_messages (inbox_code, enc_msg) 
-VALUES ($1, $2)
+INSERT INTO chat_inbox_messages (inbox_code, serial_n, enc_msg) 
+VALUES ($1, $2, $3)
 `
 
 type AddMessageParams struct {
 	InboxCode []byte
+	SerialN   int64
 	EncMsg    []byte
 }
 
 // -- CHAT MESSAGES
 func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
-	_, err := q.db.Exec(ctx, addMessage, arg.InboxCode, arg.EncMsg)
+	_, err := q.db.Exec(ctx, addMessage, arg.InboxCode, arg.SerialN, arg.EncMsg)
 	return err
 }
 
@@ -92,24 +93,29 @@ func (q *Queries) GetInboxToken(ctx context.Context, code []byte) (GetInboxToken
 }
 
 const getMessages = `-- name: GetMessages :many
-SELECT enc_msg
+SELECT enc_msg, serial_n
 FROM chat_inbox_messages
 WHERE inbox_code = $1
 `
 
-func (q *Queries) GetMessages(ctx context.Context, inboxCode []byte) ([][]byte, error) {
+type GetMessagesRow struct {
+	EncMsg  []byte
+	SerialN int64
+}
+
+func (q *Queries) GetMessages(ctx context.Context, inboxCode []byte) ([]GetMessagesRow, error) {
 	rows, err := q.db.Query(ctx, getMessages, inboxCode)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items [][]byte
+	var items []GetMessagesRow
 	for rows.Next() {
-		var enc_msg []byte
-		if err := rows.Scan(&enc_msg); err != nil {
+		var i GetMessagesRow
+		if err := rows.Scan(&i.EncMsg, &i.SerialN); err != nil {
 			return nil, err
 		}
-		items = append(items, enc_msg)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -25,20 +25,20 @@ type ChatClient struct {
 
 	MainSub chan *server.ServerMessage
 
-	connected  bool
-	ConnectedC chan bool
+	connected bool
+	// ConnectedC chan bool
 }
 
 var chatClient *ChatClient
+var ConnectedC chan bool = make(chan bool, 50)
 
 func InitChatClient(h3c *http.Client) *ChatClient {
 	chatClient = &ChatClient{
-		client:     h3c,
-		str:        nil,
-		subsMu:     sync.RWMutex{},
-		subs:       make(map[[32]byte][]chan *server.ServerMessage),
-		MainSub:    make(chan *server.ServerMessage, 50),
-		ConnectedC: make(chan bool, 50),
+		client:  h3c,
+		str:     nil,
+		subsMu:  sync.RWMutex{},
+		subs:    make(map[[32]byte][]chan *server.ServerMessage),
+		MainSub: make(chan *server.ServerMessage, 50),
 	}
 	return chatClient
 }
@@ -53,7 +53,7 @@ func (c *ChatClient) GetConnected() bool {
 
 func (c *ChatClient) setConnected(connected bool) {
 	c.connected = connected
-	c.ConnectedC <- c.connected
+	ConnectedC <- c.connected
 }
 
 func (c *ChatClient) Connect() error {

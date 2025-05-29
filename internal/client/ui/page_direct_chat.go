@@ -202,7 +202,8 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if txt == "" {
 			break
 		}
-		encMsg, event, key, err := service.EncryptMessageForPeer(m.chat, txt)
+		encMsg, event, err := service.EncryptMessageForPeer(m.chat, txt)
+		log.Printf("encrypted msg '%v' serial %v with key\n\t%v", txt, event.Serial, m.chat.Key)
 		if err != nil {
 			cmd = tea.Batch(cmd, func() tea.Msg { return err })
 			break
@@ -217,7 +218,7 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = tea.Batch(cmd, func() tea.Msg { return err })
 			break
 		}
-		save.NewEvent(m.chat, encMsg.Serial, key, event)
+		save.NewEvent(m.chat, m.chat.CurrentSerial+1, service.Ratchet(m.chat.Key), event)
 		m.textbox.SetValue("")
 		msgTxt := messageToString(event, m.selfStyle)
 		if msgTxt != "" {

@@ -18,43 +18,43 @@ func Ratchet(v []byte) []byte {
 	return h.Sum(nil)
 }
 
-func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*cli_proto.ClientEvent, uint64, []byte, error) {
-	var key []byte
-	var currentSerial = chat.CurrentSerial + 1
-	if chat.CurrentSerial+1 == msg.Send.Serial {
-		key = chat.Key
-		currentSerial = msg.Send.Serial
+func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*cli_proto.ClientEvent, uint64, error) {
+	var usedKey []byte
+	usedSerial := chat.CurrentSerial
+	if chat.CurrentSerial == msg.Send.Serial {
+		usedKey = chat.Key
+		chat.CurrentSerial++
 	} else {
+		usedSerial = msg.Send.Serial
 		// ratchet should not extend more than MAX_RATCHET_CYCLE. should have set the new key with mlkem
 		// if msg.Send.Serial == chat.CurrentSerial+save.MAX_RATCHET_CYCLE {
 		// 	return nil, fmt.Errorf("serial number for message (%v) exceeded MAX RATCHET CYCLE (%v)", msg.Send.Serial, save.MAX_RATCHET_CYCLE)
 		// }
 
 		// ratchet until we get key for serial of msg
-		for i := chat.CurrentSerial + 1; i < msg.Send.Serial; i++ {
-			key = Ratchet(key)
+		for i := chat.CurrentSerial; i < msg.Send.Serial; i++ {
+			usedKey = Ratchet(usedKey)
 		}
 	}
 	encRaw := msg.Send.EncData
-	raw, err := common.Decrypt(encRaw, key)
+	raw, err := common.Decrypt(encRaw, usedKey)
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, 0, err
 	}
 
 	peerMsg := &cli_proto.ClientEvent{}
 	err = proto.Unmarshal(raw, peerMsg)
 
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, 0, err
 	}
-	return peerMsg, currentSerial, key, nil
+	return peerMsg, usedSerial, nil
 }
 
-func EncryptMessageForPeer(chat *cli_proto.Chat, txt string) (*server.SendMsg, *cli_proto.ClientEvent, []byte, error) {
-	serial := chat.CurrentSerial + 1
+func EncryptMessageForPeer(chat *cli_proto.Chat, txt string) (*server.SendMsg, *cli_proto.ClientEvent, error) {
 	event := &cli_proto.ClientEvent{
 		Timestamp: uint64(time.Now().UTC().Unix()),
-		Serial:    serial,
+		Serial:    chat.CurrentSerial,
 		Sender:    GetUsername(),
 		Payload: &cli_proto.ClientEvent_Message{
 			Message: &cli_proto.ChatMessage{
@@ -64,19 +64,18 @@ func EncryptMessageForPeer(chat *cli_proto.Chat, txt string) (*server.SendMsg, *
 	}
 	raw, err := proto.Marshal(event)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	key := Ratchet(chat.Key)
 
-	encRaw, err := common.Encrypt(raw, key)
+	encRaw, err := common.Encrypt(raw, chat.Key)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	return &server.SendMsg{
-		Serial:   serial,
+		Serial:   chat.CurrentSerial,
 		Receiver: chat.Peer.Username,
 		InboxId:  chat.Peer.InboxId,
 		Message:  encRaw,
-	}, event, key, nil
+	}, event, nil
 }

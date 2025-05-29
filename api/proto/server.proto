@@ -87,7 +87,7 @@ message GetNewMessages {
 }
 
 message Message {
-    bytes msgs = 1;
+    bytes encMsg = 1;
     uint64 serial = 2;
 }
 

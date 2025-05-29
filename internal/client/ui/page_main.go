@@ -123,7 +123,7 @@ func NewMainPage(save *cli_proto.SaveState) MainPage {
 type ConnectStatus bool
 
 func checkConnection() tea.Msg {
-	return ConnectStatus(<-service.GetChatClient().ConnectedC)
+	return ConnectStatus(<-service.ConnectedC)
 }
 
 func (m MainPage) Init() tea.Cmd {

@@ -13,6 +13,7 @@ type ChatInbox struct {
 
 type ChatInboxMessage struct {
 	ID        int32
+	SerialN   int64
 	InboxCode []byte
 	EncMsg    []byte
 }

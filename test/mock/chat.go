@@ -99,7 +99,7 @@ func (r MockChatRepo) GetToken(inboxCode []byte) (db.GetInboxTokenRow, error) {
 	return db.GetInboxTokenRow{}, errors.New("inbox not found")
 }
 
-func (r *MockChatRepo) AddMessage(inboxCode, encMsg []byte) error {
+func (r *MockChatRepo) AddMessage(inboxCode []byte, serial uint64, encMsg []byte) error {
 	_, err := r.GetToken(inboxCode)
 	if err != nil {
 		return err
@@ -107,15 +107,19 @@ func (r *MockChatRepo) AddMessage(inboxCode, encMsg []byte) error {
 	r.chatInboxMessages = append(r.chatInboxMessages, db.ChatInboxMessage{
 		InboxCode: inboxCode,
 		EncMsg:    encMsg,
+		SerialN:   int64(serial),
 	})
 	return nil
 }
 
-func (r MockChatRepo) GetMessages(inboxCode []byte) ([][]byte, error) {
-	result := make([][]byte, 0)
+func (r MockChatRepo) GetMessages(inboxCode []byte) ([]db.GetMessagesRow, error) {
+	result := make([]db.GetMessagesRow, 0)
 	for _, v := range r.chatInboxMessages {
 		if bytes.Equal(v.InboxCode, inboxCode) {
-			result = append(result, v.EncMsg)
+			result = append(result, db.GetMessagesRow{
+				EncMsg:  v.EncMsg,
+				SerialN: v.SerialN,
+			})
 		}
 	}
 	return result, nil

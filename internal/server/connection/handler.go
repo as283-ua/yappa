@@ -139,7 +139,7 @@ func saveToInbox(msg *server.SendMsg) error {
 		}
 	}
 
-	err = chat.Repo.AddMessage(msg.InboxId, msg.Message)
+	err = chat.Repo.AddMessage(msg.InboxId, msg.Serial, msg.Message)
 	if err != nil {
 		logging.GetLogger().Println("DB error:", err)
 		return err
