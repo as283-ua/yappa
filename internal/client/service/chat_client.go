@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/as283-ua/yappa/api/gen/client"
 	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/settings"
 	"github.com/as283-ua/yappa/pkg/common"
@@ -21,7 +22,7 @@ type ChatClient struct {
 	str    *common.BiStream
 
 	subsMu sync.RWMutex
-	subs   map[[32]byte][]chan *server.ServerMessage
+	subs   map[[32]byte][]chan *client.ClientEvent
 
 	MainSub chan *server.ServerMessage
 
@@ -37,7 +38,7 @@ func InitChatClient(h3c *http.Client) *ChatClient {
 		client:  h3c,
 		str:     nil,
 		subsMu:  sync.RWMutex{},
-		subs:    make(map[[32]byte][]chan *server.ServerMessage),
+		subs:    make(map[[32]byte][]chan *client.ClientEvent),
 		MainSub: make(chan *server.ServerMessage, 50),
 	}
 	return chatClient
@@ -132,11 +133,13 @@ func (c *ChatClient) readloop() {
 func (c *ChatClient) dispatch(msg *server.ServerMessage) {
 	log.Printf("Received %v", msg)
 	c.MainSub <- msg
+}
 
+func (c *ChatClient) Emit(inboxId []byte, msg *client.ClientEvent) {
 	c.subsMu.RLock()
 	defer c.subsMu.RUnlock()
 
-	inboxSubs, ok := c.subs[[32]byte(msg.GetSend().InboxId)]
+	inboxSubs, ok := c.subs[[32]byte(inboxId)]
 	if !ok {
 		return
 	}
@@ -161,15 +164,15 @@ func (c *ChatClient) heartbeatLoop() {
 	}
 }
 
-func (c *ChatClient) Subscribe(inboxId [32]byte) (int, chan *server.ServerMessage) {
+func (c *ChatClient) Subscribe(inboxId [32]byte) (int, chan *client.ClientEvent) {
 	c.subsMu.RLock()
 	defer c.subsMu.RUnlock()
 
 	inboxSubs, ok := c.subs[inboxId]
 	if !ok {
-		inboxSubs = make([]chan *server.ServerMessage, 0)
+		inboxSubs = make([]chan *client.ClientEvent, 0)
 	}
-	ch := make(chan *server.ServerMessage, 50)
+	ch := make(chan *client.ClientEvent, 50)
 	inboxSubs = append(inboxSubs, ch)
 	c.subs[inboxId] = inboxSubs
 	id := len(c.subs[inboxId])

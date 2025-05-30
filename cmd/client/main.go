@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -9,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/as283-ua/yappa/api/gen/client"
-	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/client/settings"
@@ -117,50 +114,7 @@ func main() {
 	}
 
 	if !*fetchOnly {
-		go func() {
-			chatCli := service.GetChatClient()
-			chatMap := make(map[[32]byte]*client.Chat)
-			<-service.ConnectedC
-			for chatCli.GetConnected() {
-				msg := <-chatCli.MainSub
-				switch payload := msg.Payload.(type) {
-				case *server.ServerMessage_Send:
-					chat, ok := chatMap[[32]byte(payload.Send.InboxId)]
-					if !ok {
-						chat = save.DirectChat(saveState, payload.Send.InboxId)
-						chatMap[[32]byte(payload.Send.InboxId)] = chat
-					}
-					if chat == nil {
-						newChats, err := service.GetChatClient().GetNewChats(saveState)
-						if err != nil {
-							log.Printf("Errors while retrieving new chats: %v", err)
-						}
-						for _, nc := range newChats {
-							save.NewDirectChat(saveState, nc)
-							if bytes.Equal(nc.Peer.InboxId, payload.Send.InboxId) {
-								chat = nc
-							}
-						}
-					}
-					if chat == nil {
-						log.Printf("Received message from unknown inbox: %v", payload.Send.InboxId)
-						continue
-					}
-					event, usedSerial, err := service.DecryptPeerMessage(chat, payload)
-					if err != nil {
-						log.Println("Error decrypting peer msg:", err)
-						break
-					}
-					var newSerial uint64 = chat.CurrentSerial
-					var newKey []byte = chat.Key
-					if chat.CurrentSerial == usedSerial { // ratchet if order was kept, keep previous key and current serial otherwise
-						newSerial++
-						newKey = service.Ratchet(chat.Key)
-					}
-					save.NewEvent(chat, newSerial, newKey, event)
-				}
-			}
-		}()
+		go service.StartListening(saveState)
 	}
 	defer func() {
 		save.SaveChats(saveState)

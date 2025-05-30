@@ -10,12 +10,10 @@ import (
 	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/as283-ua/yappa/internal/client/service"
-	"github.com/as283-ua/yappa/pkg/common"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"google.golang.org/protobuf/proto"
 )
 
 func messageToString(m *client.ClientEvent, senderStyle lipgloss.Style) string {
@@ -45,7 +43,7 @@ type ChatPage struct {
 	prev tea.Model
 
 	subId        int
-	subscription <-chan *server.ServerMessage
+	subscription <-chan *client.ClientEvent
 }
 
 type MsgSend struct{}
@@ -143,7 +141,9 @@ func loadChat(saveState *client.SaveState, peer *server.UserData) tea.Cmd {
 }
 
 func (m ChatPage) waitMessage() tea.Msg {
-	return <-m.subscription
+	msg := <-m.subscription
+	log.Printf("Received %v", msg)
+	return msg
 }
 
 func (m ChatPage) Init() tea.Cmd {
@@ -226,35 +226,17 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.SetContent(m.vpContent)
 			m.viewport.GotoBottom()
 		}
-	case *server.ServerMessage:
-		switch payload := msg.Payload.(type) {
-		case *server.ServerMessage_Send:
-			encRaw := payload.Send.EncData
-
-			raw, err := common.Decrypt(encRaw, m.chat.Key)
-			if err != nil {
-				cmd = tea.Batch(cmd, func() tea.Msg { return err })
-				break
+	case *client.ClientEvent:
+		msgTxt := messageToString(msg, m.peerStyle)
+		if msgTxt != "" {
+			goToBottom := false
+			if m.viewport.AtBottom() {
+				goToBottom = true
 			}
-
-			peerMsg := &client.ClientEvent{}
-			err = proto.Unmarshal(raw, peerMsg)
-
-			if err != nil {
-				cmd = tea.Batch(cmd, func() tea.Msg { return err })
-				break
-			}
-			msgTxt := messageToString(peerMsg, m.peerStyle)
-			if msgTxt != "" {
-				goToBottom := false
-				if m.viewport.AtBottom() {
-					goToBottom = true
-				}
-				m.vpContent += msgTxt + "\n"
-				m.viewport.SetContent(m.vpContent)
-				if goToBottom {
-					m.viewport.GotoBottom()
-				}
+			m.vpContent += msgTxt + "\n"
+			m.viewport.SetContent(m.vpContent)
+			if goToBottom {
+				m.viewport.GotoBottom()
 			}
 		}
 		cmd = tea.Batch(cmd, m.waitMessage)
