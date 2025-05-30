@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -129,6 +130,22 @@ func main() {
 						chat = save.DirectChat(saveState, payload.Send.InboxId)
 						chatMap[[32]byte(payload.Send.InboxId)] = chat
 					}
+					if chat == nil {
+						newChats, err := service.GetChatClient().GetNewChats(saveState)
+						if err != nil {
+							log.Printf("Errors while retrieving new chats: %v", err)
+						}
+						for _, nc := range newChats {
+							save.NewDirectChat(saveState, nc)
+							if bytes.Equal(nc.Peer.InboxId, payload.Send.InboxId) {
+								chat = nc
+							}
+						}
+					}
+					if chat == nil {
+						log.Printf("Received message from unknown inbox: %v", payload.Send.InboxId)
+						continue
+					}
 					event, usedSerial, err := service.DecryptPeerMessage(chat, payload)
 					if err != nil {
 						log.Println("Error decrypting peer msg:", err)
@@ -136,12 +153,10 @@ func main() {
 					}
 					var newSerial uint64 = chat.CurrentSerial
 					var newKey []byte = chat.Key
-					log.Printf("Before ratchet %v %v", newSerial, newKey)
 					if chat.CurrentSerial == usedSerial { // ratchet if order was kept, keep previous key and current serial otherwise
 						newSerial++
 						newKey = service.Ratchet(chat.Key)
 					}
-					log.Printf("After ratchet %v %v\nThis one was received live", newSerial, newKey)
 					save.NewEvent(chat, newSerial, newKey, event)
 				}
 			}
@@ -169,12 +184,10 @@ func main() {
 			for _, evWMeta := range events {
 				var newSerial uint64 = chat.CurrentSerial
 				var newKey []byte = chat.Key
-				log.Printf("Before ratchet %v %v", newSerial, newKey)
 				if chat.CurrentSerial == evWMeta.Serial { // ratchet if order was kept, keep previous key and current serial otherwise
 					newSerial++
 					newKey = service.Ratchet(chat.Key)
 				}
-				log.Printf("After ratchet %v %v\nThis one was fetched", newSerial, newKey)
 				save.NewEvent(chat, newSerial, newKey, evWMeta.Event)
 			}
 		}

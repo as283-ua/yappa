@@ -2,7 +2,6 @@ package service
 
 import (
 	"crypto/sha256"
-	"log"
 	"time"
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
@@ -17,6 +16,7 @@ func Ratchet(v []byte) []byte {
 	h := sha256.New()
 	h.Write(v)
 	return h.Sum(nil)
+	// return v
 }
 
 func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*cli_proto.ClientEvent, uint64, error) {
@@ -33,9 +33,7 @@ func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*
 
 		// ratchet until we get key for serial of msg
 		for i := chat.CurrentSerial; i < msg.Send.Serial; i++ {
-			log.Printf("Before ratchet decrypt ooo %v %v", i, usedKey)
 			usedKey = Ratchet(usedKey)
-			log.Printf("After ratchet decrypt ooo %v %v", i+1, usedKey)
 		}
 	}
 	encRaw := msg.Send.EncData

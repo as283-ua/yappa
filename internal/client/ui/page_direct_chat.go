@@ -24,7 +24,7 @@ func messageToString(m *client.ClientEvent, senderStyle lipgloss.Style) string {
 		return ""
 	}
 	t := time.Unix(int64(m.Timestamp), 0).UTC()
-	return fmt.Sprintf("%s - %s\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), msg.Message.Msg)
+	return fmt.Sprintf("%s - %s (serial %v)\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), m.Serial, msg.Message.Msg)
 }
 
 type ChatPage struct {
@@ -218,9 +218,7 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = tea.Batch(cmd, func() tea.Msg { return err })
 			break
 		}
-		log.Printf("Before ratchet %v %v\n", m.chat.CurrentSerial, m.chat.Key)
 		save.NewEvent(m.chat, m.chat.CurrentSerial+1, service.Ratchet(m.chat.Key), event)
-		log.Printf("After ratchet %v %v\nThis one was sent", m.chat.CurrentSerial, m.chat.Key)
 		m.textbox.SetValue("")
 		msgTxt := messageToString(event, m.selfStyle)
 		if msgTxt != "" {
@@ -277,7 +275,10 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m ChatPage) View() string {
 	var s string
 
-	s = fmt.Sprintf("Chat with '%s'\n", m.peer.Username)
+	s = fmt.Sprintf("Chat with '%s' (current serial %v)\n", m.peer.Username, m.chat.CurrentSerial)
+	if len(m.chat.Key) != 0 {
+		s += fmt.Sprintf("%v ... %v\n", m.chat.Key[:5], m.chat.Key[len(m.chat.Key)-5:])
+	}
 
 	s += "________________________________________________________________________________\n"
 	s += m.viewport.View() + "\n"
