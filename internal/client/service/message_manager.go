@@ -19,8 +19,8 @@ func StartListening(saveState *client.SaveState) {
 		case *server.ServerMessage_Send:
 			chat, ok := chatMap[[32]byte(payload.Send.InboxId)]
 			if !ok {
-				chat = save.DirectChat(saveState, payload.Send.InboxId)
-				if chat != nil {
+				chat, ok = save.DirectChat(saveState, payload.Send.InboxId)
+				if ok {
 					chatMap[[32]byte(payload.Send.InboxId)] = chat
 				}
 			}

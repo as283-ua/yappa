@@ -64,8 +64,8 @@ func SaveChats(save *client.SaveState) error {
 }
 
 func NewDirectChat(save *client.SaveState, chat *client.Chat) {
-	c := DirectChat(save, chat.Peer.InboxId)
-	if c == nil {
+	_, ok := DirectChat(save, chat.Peer.InboxId)
+	if ok {
 		log.Printf("Added new chat with %v\n", chat.Peer.Username)
 		save.Chats = append(save.Chats, chat)
 		return
@@ -80,13 +80,13 @@ func NewEvent(chat *client.Chat, nextSerial uint64, nextKey []byte, event *clien
 	log.Printf("Saved event: %v", event)
 }
 
-func DirectChat(save *client.SaveState, inboxId []byte) *client.Chat {
+func DirectChat(save *client.SaveState, inboxId []byte) (*client.Chat, bool) {
 	for _, v := range save.Chats {
 		if bytes.Equal(v.Peer.InboxId, inboxId) {
-			return v
+			return v, true
 		}
 	}
-	return nil
+	return nil, false
 }
 
 func DirectChatByUser(save *client.SaveState, username string) *client.Chat {
