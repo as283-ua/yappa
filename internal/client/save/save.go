@@ -65,9 +65,9 @@ func SaveChats(save *client.SaveState) error {
 
 func NewDirectChat(save *client.SaveState, chat *client.Chat) {
 	_, ok := DirectChat(save, chat.Peer.InboxId)
-	if ok {
-		log.Printf("Added new chat with %v\n", chat.Peer.Username)
+	if !ok {
 		save.Chats = append(save.Chats, chat)
+		log.Printf("Added new chat with %v\n", chat.Peer.Username)
 		return
 	}
 }
