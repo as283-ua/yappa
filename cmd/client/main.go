@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/as283-ua/yappa/api/gen/client"
+	"github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/client/settings"
@@ -131,21 +132,31 @@ func main() {
 			save.NewDirectChat(saveState, chat)
 		}
 
-		newMsgs, err := service.GetChatClient().GetNewMessages(saveState)
+		newEncMsgs, err := service.GetChatClient().GetNewMessages(saveState)
 		if err != nil {
 			log.Printf("Errors while retrieving new messages: %v", err)
 		}
-		for chat, events := range newMsgs {
-			for _, evWMeta := range events {
+		for chat, listMsgs := range newEncMsgs {
+			for _, msg := range listMsgs.Msgs {
+				event, _, err := service.DecryptPeerMessage(chat, &server.ServerMessage_Send{Send: &server.ReceiveMsg{
+					InboxId: chat.Peer.InboxId,
+					Serial:  msg.Serial,
+					EncData: msg.EncMsg,
+				}})
+				if err != nil {
+					log.Printf("Error decrypting message %v from chat %v", msg.Serial, chat.Peer.InboxId)
+					continue
+				}
+
 				var newSerial uint64 = chat.CurrentSerial
 				var newKey []byte = chat.Key
-				if chat.CurrentSerial == evWMeta.Serial { // ratchet if order was kept, keep previous key and current serial otherwise
+				if chat.CurrentSerial == msg.Serial { // ratchet if order was kept, keep previous key and current serial otherwise
 					newSerial++
 					errored := false
-					switch msg := evWMeta.Event.Payload.(type) {
+					switch msg := event.Payload.(type) {
 					case *client.ClientEvent_KeyRotation:
 						decapKey := service.GetMlkemDecap()
-						if decapKey != nil {
+						if decapKey == nil {
 							errored = true
 							log.Println("Received key rotation message but no MLKEM key is loaded")
 							break
@@ -164,7 +175,7 @@ func main() {
 						break
 					}
 				}
-				save.NewEvent(chat, newSerial, newKey, evWMeta.Event)
+				save.NewEvent(chat, newSerial, newKey, event)
 			}
 		}
 	}

@@ -355,9 +355,9 @@ type EventWithMetadata struct {
 	Serial uint64
 }
 
-func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) (map[*cli_proto.Chat][]EventWithMetadata, error) {
+func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) (map[*cli_proto.Chat]*server.ListNewMessages, error) {
 	errs := common.MultiError{Errors: make([]error, 0)}
-	chats := make(map[*cli_proto.Chat][]EventWithMetadata)
+	chats := make(map[*cli_proto.Chat]*server.ListNewMessages)
 	for _, chat := range saveState.Chats {
 		tokenObj, err := c.fetchChatToken(chat.Peer.InboxId)
 		if err != nil {
@@ -380,7 +380,6 @@ func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) (map[*cli_pr
 			errs.Errors = append(errs.Errors, err)
 			continue
 		}
-		chats[chat] = make([]EventWithMetadata, 0)
 
 		messages, err := c.fetchNewMessages(chat.Peer.InboxId, token)
 		if err != nil {
@@ -388,21 +387,23 @@ func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) (map[*cli_pr
 			continue
 		}
 
-		for _, msg := range messages.Msgs {
-			event, serial, err := DecryptPeerMessage(chat, &server.ServerMessage_Send{Send: &server.ReceiveMsg{
-				InboxId: chat.Peer.InboxId,
-				Serial:  msg.Serial,
-				EncData: msg.EncMsg,
-			}})
-			if err != nil {
-				errs.Errors = append(errs.Errors, err)
-				continue
-			}
-			chats[chat] = append(chats[chat], EventWithMetadata{
-				Event:  event,
-				Serial: serial,
-			})
-		}
+		chats[chat] = messages
+
+		// for _, msg := range messages.Msgs {
+		// 	event, serial, err := DecryptPeerMessage(chat, &server.ServerMessage_Send{Send: &server.ReceiveMsg{
+		// 		InboxId: chat.Peer.InboxId,
+		// 		Serial:  msg.Serial,
+		// 		EncData: msg.EncMsg,
+		// 	}})
+		// 	if err != nil {
+		// 		errs.Errors = append(errs.Errors, err)
+		// 		continue
+		// 	}
+		// 	chats[chat] = append(chats[chat], EventWithMetadata{
+		// 		Event:  event,
+		// 		Serial: serial,
+		// 	})
+		// }
 	}
 	return chats, errs.NilOrError()
 }

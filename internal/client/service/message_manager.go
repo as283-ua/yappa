@@ -53,7 +53,7 @@ func StartListening(saveState *client.SaveState) {
 				switch msg := event.Payload.(type) {
 				case *client.ClientEvent_KeyRotation:
 					decapKey := GetMlkemDecap()
-					if decapKey != nil {
+					if decapKey == nil {
 						errored = true
 						log.Println("Received key rotation message but no MLKEM key is loaded")
 						break
