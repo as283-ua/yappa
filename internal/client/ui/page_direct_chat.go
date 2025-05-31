@@ -193,7 +193,9 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				text = messageToString(ev, m.peerStyle)
 			}
-			m.vpContent += text + "\n"
+			if text != "" {
+				m.vpContent += text + "\n"
+			}
 		}
 		m.viewport.SetContent(m.vpContent)
 		m.viewport.GotoBottom()
@@ -230,7 +232,10 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		eventIdx := event.Serial - m.chat.SerialStart
 		var keyRotUserOffset uint64 = 0
-		if (eventIdx+keyRotUserOffset)%service.MLKEM_RATCHET_INTERVAL == 0 {
+		if m.peer.Username == m.chat.Initiator {
+			keyRotUserOffset = service.MLKEM_RATCHET_INTERVAL / 2
+		}
+		if (eventIdx+keyRotUserOffset-1)%service.MLKEM_RATCHET_INTERVAL == 0 {
 			encMsg, event, key, err := service.KeyExchangeEvent(m.chat, m.encapKey)
 			if err != nil {
 				cmd = tea.Batch(cmd, func() tea.Msg { return err })
@@ -246,7 +251,6 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 			save.NewEvent(m.chat, m.chat.CurrentSerial+1, key, event)
-			log.Println("Did mlkem key rotation")
 		}
 		m.textbox.SetValue("")
 		msgTxt := messageToString(event, m.selfStyle)

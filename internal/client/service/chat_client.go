@@ -116,10 +116,10 @@ func (c *ChatClient) readOnce(msg *server.ServerMessage, msgRaw, lenBytes []byte
 }
 
 func (c *ChatClient) readloop() {
-	var msg = &server.ServerMessage{}
 	var msgRaw, lenBytes []byte = make([]byte, 0, 4096), make([]byte, 4)
 	defer c.Close()
 	for c.connected {
+		msg := &server.ServerMessage{}
 		err := c.readOnce(msg, msgRaw, lenBytes)
 		if err != nil {
 			log.Println("Readloop error, unmarshal:", err)
