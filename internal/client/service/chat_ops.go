@@ -21,11 +21,9 @@ func Ratchet(v []byte) []byte {
 }
 
 func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*cli_proto.ClientEvent, uint64, error) {
-	var key []byte = nil
+	var key []byte = chat.Key
 	usedSerial := chat.CurrentSerial
-	if chat.CurrentSerial == msg.Send.Serial {
-		key = chat.Key
-	} else {
+	if chat.CurrentSerial != msg.Send.Serial {
 		usedSerial = msg.Send.Serial
 		// ratchet should not extend more than MAX_RATCHET_CYCLE. should have set the new key with mlkem
 		// if msg.Send.Serial == chat.CurrentSerial+save.MAX_RATCHET_CYCLE {
@@ -38,36 +36,6 @@ func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*
 		}
 	}
 
-	encRaw := msg.Send.EncData
-	raw, err := common.Decrypt(encRaw, key)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	peerMsg := &cli_proto.ClientEvent{}
-	err = proto.Unmarshal(raw, peerMsg)
-
-	if err != nil {
-		return nil, 0, err
-	}
-	return peerMsg, usedSerial, nil
-}
-
-func DecryptPeerMessage2(currentSerial uint64, currentKey []byte, msg *server.ServerMessage_Send) (*cli_proto.ClientEvent, uint64, error) {
-	var key []byte = currentKey
-	usedSerial := currentSerial
-	if currentSerial != msg.Send.Serial {
-		usedSerial = msg.Send.Serial
-		// ratchet should not extend more than MAX_RATCHET_CYCLE. should have set the new key with mlkem
-		// if msg.Send.Serial == chat.CurrentSerial+save.MAX_RATCHET_CYCLE {
-		// 	return nil, fmt.Errorf("serial number for message (%v) exceeded MAX RATCHET CYCLE (%v)", msg.Send.Serial, save.MAX_RATCHET_CYCLE)
-		// }
-
-		// ratchet until we get key for serial of msg
-		for i := currentSerial; i < msg.Send.Serial; i++ {
-			key = Ratchet(key)
-		}
-	}
 	encRaw := msg.Send.EncData
 	raw, err := common.Decrypt(encRaw, key)
 	if err != nil {

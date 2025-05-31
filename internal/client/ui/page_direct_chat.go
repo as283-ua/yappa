@@ -213,7 +213,6 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		encMsg, event, err := service.EncryptMessageForPeer(m.chat, txt)
-		log.Printf("encrypted msg '%v' serial %v with key\n\t%v", txt, event.Serial, m.chat.Key)
 		if err != nil {
 			cmd = tea.Batch(cmd, func() tea.Msg { return err })
 			break
