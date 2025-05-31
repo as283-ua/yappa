@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"crypto/mlkem"
 	"log"
 
 	"github.com/as283-ua/yappa/api/gen/client"
@@ -13,6 +14,7 @@ import (
 func StartListening(saveState *client.SaveState) {
 	chatCli := GetChatClient()
 	chatMap := make(map[[32]byte]*client.Chat)
+	encapCache := make(map[string]*mlkem.EncapsulationKey1024)
 	<-ConnectedC
 	for chatCli.GetConnected() {
 		msg := <-chatCli.MainSub
@@ -75,9 +77,40 @@ func StartListening(saveState *client.SaveState) {
 				// todo send NACK to redo key exchange
 				break
 			}
-			log.Printf("Received and saved event %v", event)
 			save.NewEvent(chat, newSerial, newKey, event)
 			chatCli.Emit(chat.Peer.InboxId, event)
+
+			eventIdx := event.Serial - chat.SerialStart
+			var keyRotUserOffset uint64 = 0
+			if chat.Peer.Username == chat.Initiator {
+				keyRotUserOffset = MLKEM_RATCHET_INTERVAL / 2
+			}
+			if (eventIdx+keyRotUserOffset-1)%MLKEM_RATCHET_INTERVAL == 0 {
+				encapKey, ok := encapCache[chat.Peer.Username]
+				if !ok {
+					encapKey, err = mlkem.NewEncapsulationKey1024(chat.Peer.KeyExchange)
+					if err != nil {
+						log.Printf("Error parsing %v's key: %v", chat.Peer.Username, err)
+						continue
+					}
+					encapCache[chat.Peer.Username] = encapKey
+				}
+				encMsg, event, key, err := KeyExchangeEvent(chat, encapKey)
+				if err != nil {
+					log.Println("Error in key exchange message creation:", err)
+					continue
+				}
+				err = GetChatClient().Send(&server.ClientMessage{
+					Payload: &server.ClientMessage_Send{
+						Send: encMsg,
+					},
+				})
+				if err != nil {
+					log.Println("Error sending key exchange:", err)
+					continue
+				}
+				save.NewEvent(chat, chat.CurrentSerial+1, key, event)
+			}
 		}
 	}
 }
