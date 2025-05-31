@@ -86,7 +86,7 @@ func chatData(peer *server.UserData, inboxId []byte) (*cli_proto.Chat, []byte, e
 		return nil, nil, err
 	}
 	serial := binary.LittleEndian.Uint64(serialBytes[:])
-	client := &cli_proto.Chat{
+	chat := &cli_proto.Chat{
 		Events:        make([]*cli_proto.ClientEvent, 0),
 		SerialStart:   serial,
 		CurrentSerial: serial,
@@ -97,8 +97,9 @@ func chatData(peer *server.UserData, inboxId []byte) (*cli_proto.Chat, []byte, e
 			Cert:        []byte(peer.Certificate),
 			InboxId:     inboxId,
 		},
+		Initiator: GetUsername(),
 	}
-	return client, keyExchData, nil
+	return chat, keyExchData, nil
 }
 
 func encryptChatData(peername string, sendername string, serial uint64, inboxId, key, keyExchData []byte, privSignKey *ecdsa.PrivateKey) (*server.ChatInitNotify, error) {
@@ -342,6 +343,7 @@ func (c *ChatClient) GetNewChats() ([]*cli_proto.Chat, error) {
 				Cert:        []byte(userData.Certificate),
 				InboxId:     inboxId,
 			},
+			Initiator: userData.Username,
 		})
 	}
 

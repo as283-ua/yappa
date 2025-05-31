@@ -97,7 +97,7 @@ func NewChatPage(save *client.SaveState, prev tea.Model, user *server.UserData) 
 		selfStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#ff8")),
 		peerStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#45f")),
 		inputs:    inputs,
-		chat:      &client.Chat{},
+		chat:      nil,
 		subId:     -1,
 	}
 }
@@ -257,8 +257,11 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m ChatPage) View() string {
 	var s string
 
-	s = fmt.Sprintf("Chat with '%s' (current serial %v)\n", m.peer.Username, m.chat.CurrentSerial)
-	if len(m.chat.Key) != 0 {
+	s = fmt.Sprintf("Chat with '%s'\n", m.peer.Username)
+	if m.chat != nil {
+		s += fmt.Sprintf("Inbox id: %v\n", m.chat.Peer.InboxId)
+		s += fmt.Sprintf("Current expected message serial: %v\n", m.chat.CurrentSerial)
+		s += fmt.Sprintf("Initiator: %v\n", m.chat.Initiator)
 		s += fmt.Sprintf("%v ... %v\n", m.chat.Key[:5], m.chat.Key[len(m.chat.Key)-5:])
 	}
 
