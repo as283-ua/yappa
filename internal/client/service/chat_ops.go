@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/mlkem"
 	"crypto/sha256"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const MAX_RATCHET_CYCLE = 20
+const MLKEM_RATCHET_INTERVAL uint64 = 6
 
 func Ratchet(v []byte) []byte {
 	h := sha256.New()
@@ -20,10 +21,10 @@ func Ratchet(v []byte) []byte {
 }
 
 func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*cli_proto.ClientEvent, uint64, error) {
-	var usedKey []byte = chat.Key
+	var key []byte = nil
 	usedSerial := chat.CurrentSerial
 	if chat.CurrentSerial == msg.Send.Serial {
-		usedKey = chat.Key
+		key = chat.Key
 	} else {
 		usedSerial = msg.Send.Serial
 		// ratchet should not extend more than MAX_RATCHET_CYCLE. should have set the new key with mlkem
@@ -33,11 +34,42 @@ func DecryptPeerMessage(chat *cli_proto.Chat, msg *server.ServerMessage_Send) (*
 
 		// ratchet until we get key for serial of msg
 		for i := chat.CurrentSerial; i < msg.Send.Serial; i++ {
-			usedKey = Ratchet(usedKey)
+			key = Ratchet(key)
+		}
+	}
+
+	encRaw := msg.Send.EncData
+	raw, err := common.Decrypt(encRaw, key)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	peerMsg := &cli_proto.ClientEvent{}
+	err = proto.Unmarshal(raw, peerMsg)
+
+	if err != nil {
+		return nil, 0, err
+	}
+	return peerMsg, usedSerial, nil
+}
+
+func DecryptPeerMessage2(currentSerial uint64, currentKey []byte, msg *server.ServerMessage_Send) (*cli_proto.ClientEvent, uint64, error) {
+	var key []byte = currentKey
+	usedSerial := currentSerial
+	if currentSerial != msg.Send.Serial {
+		usedSerial = msg.Send.Serial
+		// ratchet should not extend more than MAX_RATCHET_CYCLE. should have set the new key with mlkem
+		// if msg.Send.Serial == chat.CurrentSerial+save.MAX_RATCHET_CYCLE {
+		// 	return nil, fmt.Errorf("serial number for message (%v) exceeded MAX RATCHET CYCLE (%v)", msg.Send.Serial, save.MAX_RATCHET_CYCLE)
+		// }
+
+		// ratchet until we get key for serial of msg
+		for i := currentSerial; i < msg.Send.Serial; i++ {
+			key = Ratchet(key)
 		}
 	}
 	encRaw := msg.Send.EncData
-	raw, err := common.Decrypt(encRaw, usedKey)
+	raw, err := common.Decrypt(encRaw, key)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -78,4 +110,33 @@ func EncryptMessageForPeer(chat *cli_proto.Chat, txt string) (*server.SendMsg, *
 		InboxId:  chat.Peer.InboxId,
 		Message:  encRaw,
 	}, event, nil
+}
+
+func KeyExchangeEvent(chat *cli_proto.Chat, encapKey *mlkem.EncapsulationKey1024) (*server.SendMsg, *cli_proto.ClientEvent, []byte, error) {
+	key, cipherText := encapKey.Encapsulate()
+	event := &cli_proto.ClientEvent{
+		Timestamp: uint64(time.Now().UTC().Unix()),
+		Serial:    chat.CurrentSerial,
+		Sender:    GetUsername(),
+		Payload: &cli_proto.ClientEvent_KeyRotation{
+			KeyRotation: &cli_proto.KeyRotation{
+				KeyExchangeData: cipherText,
+				// Signature: ---,	// todo
+			},
+		},
+	}
+	raw, err := proto.Marshal(event)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	encRaw, err := common.Encrypt(raw, chat.Key)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return &server.SendMsg{
+		Serial:   chat.CurrentSerial,
+		Receiver: chat.Peer.Username,
+		InboxId:  chat.Peer.InboxId,
+		Message:  encRaw,
+	}, event, key, nil
 }

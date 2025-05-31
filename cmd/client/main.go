@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/as283-ua/yappa/api/gen/client"
 	"github.com/as283-ua/yappa/internal/client/save"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/client/settings"
@@ -140,7 +141,28 @@ func main() {
 				var newKey []byte = chat.Key
 				if chat.CurrentSerial == evWMeta.Serial { // ratchet if order was kept, keep previous key and current serial otherwise
 					newSerial++
-					newKey = service.Ratchet(chat.Key)
+					errored := false
+					switch msg := evWMeta.Event.Payload.(type) {
+					case *client.ClientEvent_KeyRotation:
+						decapKey := service.GetMlkemDecap()
+						if decapKey != nil {
+							errored = true
+							log.Println("Received key rotation message but no MLKEM key is loaded")
+							break
+						}
+						newKey, err = decapKey.Decapsulate(msg.KeyRotation.KeyExchangeData)
+						if err != nil {
+							errored = true
+							log.Println("Error decapsulating key:", err)
+							break
+						}
+					default:
+						newKey = service.Ratchet(chat.Key)
+					}
+					if errored {
+						// todo send NACK to redo key exchange
+						break
+					}
 				}
 				save.NewEvent(chat, newSerial, newKey, evWMeta.Event)
 			}

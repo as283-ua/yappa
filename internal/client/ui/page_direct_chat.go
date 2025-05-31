@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"crypto/mlkem"
 	"fmt"
 	"log"
 	"strings"
@@ -27,6 +28,7 @@ func messageToString(m *client.ClientEvent, senderStyle lipgloss.Style) string {
 
 type ChatPage struct {
 	peer         *server.UserData
+	encapKey     *mlkem.EncapsulationKey1024
 	chat         *client.Chat
 	viewport     viewport.Model
 	vpContent    string
@@ -142,7 +144,6 @@ func loadChat(saveState *client.SaveState, peer *server.UserData) tea.Cmd {
 
 func (m ChatPage) waitMessage() tea.Msg {
 	msg := <-m.subscription
-	log.Printf("Received %v", msg)
 	return msg
 }
 
@@ -176,6 +177,13 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		save.NewDirectChat(m.save, msg)
 		log.Printf("Loaded chat with %v\n", msg.Peer.Username)
 		m.chat = msg
+
+		var err error
+		m.encapKey, err = mlkem.NewEncapsulationKey1024(m.chat.Peer.KeyExchange)
+		if err != nil {
+			cmd = tea.Batch(cmd, func() tea.Msg { return err })
+			break
+		}
 
 		m.vpContent = ""
 		text := ""
@@ -219,6 +227,27 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		save.NewEvent(m.chat, m.chat.CurrentSerial+1, service.Ratchet(m.chat.Key), event)
+
+		eventIdx := event.Serial - m.chat.SerialStart
+		var keyRotUserOffset uint64 = 0
+		if (eventIdx+keyRotUserOffset)%service.MLKEM_RATCHET_INTERVAL == 0 {
+			encMsg, event, key, err := service.KeyExchangeEvent(m.chat, m.encapKey)
+			if err != nil {
+				cmd = tea.Batch(cmd, func() tea.Msg { return err })
+				break
+			}
+			err = service.GetChatClient().Send(&server.ClientMessage{
+				Payload: &server.ClientMessage_Send{
+					Send: encMsg,
+				},
+			})
+			if err != nil {
+				cmd = tea.Batch(cmd, func() tea.Msg { return err })
+				break
+			}
+			save.NewEvent(m.chat, m.chat.CurrentSerial+1, key, event)
+			log.Println("Did mlkem key rotation")
+		}
 		m.textbox.SetValue("")
 		msgTxt := messageToString(event, m.selfStyle)
 		if msgTxt != "" {
