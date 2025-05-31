@@ -20,10 +20,12 @@ func StartListening(saveState *client.SaveState) {
 			chat, ok := chatMap[[32]byte(payload.Send.InboxId)]
 			if !ok {
 				chat = save.DirectChat(saveState, payload.Send.InboxId)
-				chatMap[[32]byte(payload.Send.InboxId)] = chat
+				if chat != nil {
+					chatMap[[32]byte(payload.Send.InboxId)] = chat
+				}
 			}
 			if chat == nil {
-				newChats, err := GetChatClient().GetNewChats(saveState)
+				newChats, err := GetChatClient().GetNewChats()
 				if err != nil {
 					log.Printf("Errors while retrieving new chats: %v", err)
 				}

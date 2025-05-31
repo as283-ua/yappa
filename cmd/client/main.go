@@ -122,7 +122,7 @@ func main() {
 	}()
 
 	if service.GetUsername() != "" {
-		newChats, err := service.GetChatClient().GetNewChats(saveState)
+		newChats, err := service.GetChatClient().GetNewChats()
 		if err != nil {
 			log.Printf("Errors while retrieving new chats: %v", err)
 		}
@@ -152,7 +152,12 @@ func main() {
 		return
 	}
 
-	log.Println("Started client")
+	if service.GetUsername() == "" {
+		log.Println("Started client without session")
+	} else {
+		log.Printf("Started client as %v", service.GetUsername())
+	}
+
 	p := tea.NewProgram(ui.NewMainPage(saveState))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error: %v", err)

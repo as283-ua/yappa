@@ -296,7 +296,7 @@ func (c *ChatClient) fetchNewMessages(inboxId, token []byte) (*server.ListNewMes
 	return msgs, nil
 }
 
-func (c *ChatClient) GetNewChats(saveState *cli_proto.SaveState) ([]*cli_proto.Chat, error) {
+func (c *ChatClient) GetNewChats() ([]*cli_proto.Chat, error) {
 	chats, err := c.fetchNewChats()
 	if err != nil {
 		return nil, err
