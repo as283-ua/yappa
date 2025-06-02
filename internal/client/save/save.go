@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/as283-ua/yappa/api/gen/client"
 	"google.golang.org/protobuf/proto"
@@ -14,6 +15,7 @@ import (
 const WAL_PATH = "data.wal"
 
 var username string
+var mx = sync.Mutex{}
 
 func SetSavepathUsername(name string) {
 	username = name
@@ -23,6 +25,8 @@ func savePath() string {
 }
 
 func LoadChats() (*client.SaveState, error) {
+	mx.Lock()
+	defer mx.Unlock()
 	saveState := &client.SaveState{}
 	saveStateRaw, err := os.ReadFile(savePath())
 	if err != nil {
@@ -73,6 +77,8 @@ func NewDirectChat(save *client.SaveState, chat *client.Chat) {
 }
 
 func NewEvent(chat *client.Chat, nextSerial uint64, nextKey []byte, event *client.ClientEvent) {
+	mx.Lock()
+	defer mx.Unlock()
 	chat.Events = append(chat.Events, event)
 	chat.CurrentSerial = nextSerial
 	chat.Key = nextKey

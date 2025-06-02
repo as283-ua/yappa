@@ -229,12 +229,8 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		save.NewEvent(m.chat, m.chat.CurrentSerial+1, service.Ratchet(m.chat.Key), event)
 
-		eventIdx := event.Serial - m.chat.SerialStart
-		var keyRotUserOffset uint64 = 0
-		if m.peer.Username == m.chat.Initiator {
-			keyRotUserOffset = service.MLKEM_RATCHET_INTERVAL / 2
-		}
-		if (eventIdx+keyRotUserOffset-1)%service.MLKEM_RATCHET_INTERVAL == 0 {
+		if service.KeyExchNeeded(m.chat) {
+			log.Printf("Sending key exchange on send. Current serial = %v, first message = %v. Frequency = %v", m.chat.CurrentSerial, m.chat.SerialStart, service.MLKEM_RATCHET_INTERVAL)
 			encMsg, event, key, err := service.KeyExchangeEvent(m.chat, m.encapKey)
 			if err != nil {
 				cmd = tea.Batch(cmd, func() tea.Msg { return err })

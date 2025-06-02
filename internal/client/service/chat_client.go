@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -104,6 +105,9 @@ func (c *ChatClient) readOnce(msg *server.ServerMessage, msgRaw, lenBytes []byte
 		return err
 	}
 	msgLen := binary.BigEndian.Uint32(lenBytes[:])
+	if int(msgLen) >= cap(msgRaw) {
+		return fmt.Errorf("invalid incoming message size: %v. Max: %v", msgLen, cap(msgRaw))
+	}
 	_, err = c.str.Read(msgRaw[:msgLen])
 	if err != nil {
 		return err

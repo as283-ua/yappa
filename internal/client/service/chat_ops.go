@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const MLKEM_RATCHET_INTERVAL uint64 = 6
+const MLKEM_RATCHET_INTERVAL int = 20
 
 func Ratchet(v []byte) []byte {
 	h := sha256.New()
