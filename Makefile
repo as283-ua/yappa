@@ -39,16 +39,39 @@ cert_server_ca_server:
 cert_server_server:
 	$(MAKE) cert_server ARG=server
 
-cacert:
-	rm -f certs/ca/ca.key certs/ca/ca.crt
+certs/ca/ca.crt certs/ca/ca.key:
 	mkdir -p certs/ca
 	openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-384 -out certs/ca/ca.key
 	openssl req -x509 -new -key certs/ca/ca.key -sha256 -days 3650 -out certs/ca/ca.crt -config certs/ca.cnf -extensions v3_ca
 
+cacert: certs/ca/ca.crt certs/ca/ca.key
+
+cert_test_ok: certs/ca/ca.crt certs/ca/ca.key
+	mkdir -p test/assets/certs/test_ok
+	rm -rf test/assets/certs/test_ok/*
+	openssl ecparam -genkey -name secp384r1 | openssl pkcs8 -topk8 -nocrypt -out test/assets/certs/test_ok/test_ok.key
+	openssl req -new -key test/assets/certs/test_ok/test_ok.key \
+		-out test/assets/certs/test_ok/test_ok.csr \
+		-subj "/CN=test_ok"
+	openssl x509 -req -days 365 \
+		-in test/assets/certs/test_ok/test_ok.csr \
+		-CA certs/ca/ca.crt -CAkey certs/ca/ca.key -CAcreateserial \
+		-out test/assets/certs/test_ok/test_ok.crt \
+		-extensions req_ext -extfile certs/server.cnf
+	rm test/assets/certs/test_ok/test_ok.csr
+	openssl verify -CAfile certs/ca/ca.crt test/assets/certs/test_ok/test_ok.crt
+
+cert_test_bad:
+	mkdir -p test/assets/certs/test_bad
+	rm -rf test/assets/certs/test_bad/*
+	openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-384 -out test/assets/certs/test_bad/test_bad.key
+	openssl req -new -x509 -key test/assets/certs/test_bad/test_bad.key -sha256 -days 365 -out test/assets/certs/test_bad/test_bad.crt -config certs/server.cnf -extensions req_ext
+	openssl verify -CAfile certs/ca/ca.crt test/assets/certs/test_bad/test_bad.crt || true
+
 sqlc: scripts/sql/queries.sql scripts/sql/schema.sql
 	sqlc generate
 
-all: cacert cert_server_ca_server cert_server_server proto sqlc
+all: cacert cert_server_ca_server cert_server_server cert_test_ok cert_test_bad proto sqlc
 
 docker_db:
 	docker run -d \
@@ -71,7 +94,7 @@ clean_session:
 	rm -f **.data
 
 deep_clean: clean
-	rm -f certs/ca/* certs/ca_server/* certs/client/* certs/peer/* certs/server/* 
+	rm -rf certs/ca/* certs/ca_server/* certs/client/* certs/peer/* certs/server/* test/assets/certs/*
 
 BIN_DIR := bin
 CLIENT_BIN := $(BIN_DIR)/client

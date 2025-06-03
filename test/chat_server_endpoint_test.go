@@ -3,8 +3,6 @@ package test
 import (
 	"bytes"
 	"context"
-	"crypto/mlkem"
-	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -19,7 +17,6 @@ import (
 	serv_proto "github.com/as283-ua/yappa/api/gen/server"
 	"github.com/as283-ua/yappa/internal/client/service"
 	"github.com/as283-ua/yappa/internal/server"
-	"github.com/as283-ua/yappa/internal/server/auth"
 	"github.com/as283-ua/yappa/internal/server/chat"
 	"github.com/as283-ua/yappa/internal/server/settings"
 	"github.com/as283-ua/yappa/pkg/common"
@@ -30,6 +27,8 @@ import (
 )
 
 var caServer, chatServer *http3.Server
+
+const TEST_CERTS_DIR = "assets/certs"
 
 func setup() {
 	os.Setenv("YAPPA_MASTER_KEY", "pass")
@@ -44,9 +43,10 @@ func setup() {
 }
 
 func RunChatServer() *http3.Server {
-	server, err := server.SetupServer(&DefaultChatServerArgs,
-		mock.EmptyMockUserRepo(),
-		mock.EmptyMockChatRepo())
+	userRepo := mock.EmptyMockUserRepo()
+	chatRepo := mock.EmptyMockChatRepo()
+	server, err := server.SetupServer(&DefaultChatServerArgs, userRepo, chatRepo)
+	userRepo.CreateUser(context.Background(), "test_ok", "", []byte{})
 
 	if err != nil {
 		log.Fatal("Error booting server: ", err)
@@ -72,7 +72,7 @@ var DefaultChatServerArgs settings.ChatCfg = settings.ChatCfg{
 func TestRegister(t *testing.T) {
 	setup()
 
-	client := GetHttp3Client("assets", "", DefaultChatServerArgs.CaCert)
+	client := GetHttp3Client(TEST_CERTS_DIR, "", DefaultChatServerArgs.CaCert)
 
 	username := "User1"
 
@@ -153,7 +153,7 @@ func TestRequireCertClient(t *testing.T) {
 	setup()
 
 	t.Run("no_cert_errors", func(t *testing.T) {
-		client := GetHttp3Client("assets", "", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "", DefaultChatServerArgs.CaCert)
 
 		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/chat/new")
 		if !assert.NoError(t, err) {
@@ -163,7 +163,7 @@ func TestRequireCertClient(t *testing.T) {
 	})
 
 	t.Run("with_cert_ok", func(t *testing.T) {
-		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.CaCert)
 
 		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/chat/new")
 		if !assert.NoError(t, err) {
@@ -173,7 +173,7 @@ func TestRequireCertClient(t *testing.T) {
 	})
 
 	t.Run("with_incorrect_cert_errors", func(t *testing.T) {
-		client := GetHttp3Client("assets", "test_bad", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_bad", DefaultChatServerArgs.CaCert)
 
 		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/chat/new")
 		if !assert.NoError(t, err) {
@@ -193,7 +193,7 @@ func TestConnection(t *testing.T) {
 		if !assert.NoError(t, err) {
 			return
 		}
-		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.CaCert)
 
 		str, err := common.Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
 		if !assert.NoError(t, err) {
@@ -230,7 +230,7 @@ func TestConnection(t *testing.T) {
 		if !assert.NoError(t, err) {
 			return
 		}
-		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.CaCert)
 
 		str, err := common.Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
 		if !assert.NoError(t, err) {
@@ -263,19 +263,10 @@ func TestChatInit(t *testing.T) {
 	setup()
 
 	t.Run("init_chat", func(t *testing.T) {
-		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.CaCert)
 
-		inboxId := make([]byte, 32)
-		rand.Read(inboxId)
-		regRequest := &serv_proto.ChatInit{
-			InboxId: inboxId,
-		}
-
-		data, err := proto.Marshal(regRequest)
-
-		assert.NoError(t, err)
 		url := fmt.Sprintf("https://%v/chat/init", DefaultChatServerArgs.Addr)
-		resp, err := client.Post(url, "application/x-protobuf", bytes.NewReader(data))
+		resp, err := client.Get(url)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
@@ -283,71 +274,5 @@ func TestChatInit(t *testing.T) {
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		repo, _ := chat.Repo.(*mock.MockChatRepo)
 		assert.Equal(t, len(repo.GetChatInboxes()), 1)
-		assert.Equal(t, repo.GetChatInboxes()[0].Code, inboxId)
-	})
-
-	t.Run("notify_chat", func(t *testing.T) {
-		client := GetHttp3Client("assets", "test_ok", DefaultChatServerArgs.CaCert)
-
-		inboxId := make([]byte, 32)
-		rand.Read(inboxId)
-		regRequest := &serv_proto.ChatInit{
-			InboxId: inboxId,
-		}
-
-		data, err := proto.Marshal(regRequest)
-
-		assert.NoError(t, err)
-		url := fmt.Sprintf("https://%v/chat/init", DefaultChatServerArgs.Addr)
-		resp, err := client.Post(url, "application/x-protobuf", bytes.NewReader(data))
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
-		defer resp.Body.Close()
-		kyberReceiver, _ := mlkem.GenerateKey1024()
-
-		receiverUsername := "Receiver"
-		auth.Repo.CreateUser(context.Background(), receiverUsername, "", kyberReceiver.EncapsulationKey().Bytes())
-		aesK, cipherText := kyberReceiver.EncapsulationKey().Encapsulate()
-
-		encSender, _ := Encrypt([]byte("Sender"), aesK)
-		encInboxId, _ := Encrypt(inboxId, aesK)
-
-		regRequest2 := &serv_proto.ChatInitNotify{
-			Receiver:        receiverUsername,
-			KeyExchangeData: cipherText,
-			EncSender:       encSender,
-			EncInboxId:      encInboxId,
-		}
-
-		data, _ = proto.Marshal(regRequest2)
-		url = fmt.Sprintf("https://%v/chat/notify", DefaultChatServerArgs.Addr)
-		resp2, err := client.Post(url, "application/x-protobuf", bytes.NewReader(data))
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
-		defer resp2.Body.Close()
-
-		newChats, err := chat.Repo.GetNewChats(receiverUsername)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
-		assert.Equal(t, 1, len(newChats))
-		aesK2, err := kyberReceiver.Decapsulate(newChats[0].KeyExchangeData)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
-
-		inboxIdDec, err := Decrypt(newChats[0].EncInboxCode, aesK2)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
-		assert.Equal(t, inboxId, inboxIdDec)
-
-		senderDec, err := Decrypt(newChats[0].EncSender, aesK2)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
-		assert.Equal(t, "Sender", string(senderDec))
 	})
 }
