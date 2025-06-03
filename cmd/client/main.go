@@ -137,7 +137,7 @@ func main() {
 			log.Printf("Errors while retrieving new messages: %v", err)
 		}
 		for chat, listMsgs := range newEncMsgs {
-			for _, msg := range listMsgs.Msgs {
+			for _, msg := range listMsgs {
 				event, _, err := service.DecryptPeerMessage(chat, &server.ServerMessage_Send{Send: &server.ReceiveMsg{
 					InboxId: chat.Peer.InboxId,
 					Serial:  msg.Serial,

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 
 	cli_proto "github.com/as283-ua/yappa/api/gen/client"
 	"github.com/as283-ua/yappa/api/gen/server"
@@ -355,9 +356,9 @@ type EventWithMetadata struct {
 	Serial uint64
 }
 
-func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) (map[*cli_proto.Chat]*server.ListNewMessages, error) {
+func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) (map[*cli_proto.Chat][]*server.Message, error) {
 	errs := common.MultiError{Errors: make([]error, 0)}
-	chats := make(map[*cli_proto.Chat]*server.ListNewMessages)
+	chats := make(map[*cli_proto.Chat][]*server.Message)
 	for _, chat := range saveState.Chats {
 		tokenObj, err := c.fetchChatToken(chat.Peer.InboxId)
 		if err != nil {
@@ -387,23 +388,10 @@ func (c *ChatClient) GetNewMessages(saveState *cli_proto.SaveState) (map[*cli_pr
 			continue
 		}
 
-		chats[chat] = messages
-
-		// for _, msg := range messages.Msgs {
-		// 	event, serial, err := DecryptPeerMessage(chat, &server.ServerMessage_Send{Send: &server.ReceiveMsg{
-		// 		InboxId: chat.Peer.InboxId,
-		// 		Serial:  msg.Serial,
-		// 		EncData: msg.EncMsg,
-		// 	}})
-		// 	if err != nil {
-		// 		errs.Errors = append(errs.Errors, err)
-		// 		continue
-		// 	}
-		// 	chats[chat] = append(chats[chat], EventWithMetadata{
-		// 		Event:  event,
-		// 		Serial: serial,
-		// 	})
-		// }
+		sort.Slice(messages.Msgs, func(i, j int) bool {
+			return messages.Msgs[i].Serial < messages.Msgs[j].Serial
+		})
+		chats[chat] = messages.Msgs
 	}
 	return chats, errs.NilOrError()
 }

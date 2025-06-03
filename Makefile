@@ -1,14 +1,21 @@
-.PHONY: proto cert_server docker_db clear cacert
+.PHONY: cert_server docker_db docker_clean clean cacert proto cert_server_ca_server cert_server_server all docker_db docker_clean clean_session deep_clean
 
-proto:
-	rm -rf api/gen/*
-	mkdir -p api/gen/ca api/gen/server api/gen/client
-	protoc -I=api/proto --go_out=api/gen/ca --go_opt=paths=source_relative api/proto/ca.proto
-	protoc -I=api/proto --go_out=api/gen/server --go_opt=paths=source_relative api/proto/server.proto
-	protoc -I=api/proto --go_out=api/gen/client --go_opt=paths=source_relative api/proto/client.proto
+api/gen/ca/ca.pb.go: api/proto/ca.proto
+	mkdir -p api/gen/ca
+	protoc -I=api/proto --go_out=api/gen/ca --go_opt=paths=source_relative $<
+
+api/gen/server/server.pb.go: api/proto/server.proto
+	mkdir -p api/gen/server
+	protoc -I=api/proto --go_out=api/gen/server --go_opt=paths=source_relative $<
+
+api/gen/client/client.pb.go: api/proto/client.proto
+	mkdir -p api/gen/client
+	protoc -I=api/proto --go_out=api/gen/client --go_opt=paths=source_relative $<
+
+proto: api/gen/ca/ca.pb.go api/gen/server/server.pb.go api/gen/client/client.pb.go
 
 cert_server:
-	@if [ "$$#" -ne 1 ]; then \
+	@if [ -z "$(ARG)" ]; then \
 		echo "Error: Exactly 1 argument is required."; \
 		echo "Usage: make cert_server ARG=<name>"; \
 		exit 1; \
@@ -22,6 +29,23 @@ cert_server:
 	rm certs/$(ARG)/$(ARG).csr
 	openssl verify -CAfile certs/ca/ca.crt certs/$(ARG)/$(ARG).crt
 
+cert_server_ca_server:
+	$(MAKE) cert_server ARG=ca_server
+
+cert_server_server:
+	$(MAKE) cert_server ARG=server
+
+cacert:
+	rm -f certs/ca/ca.key certs/ca/ca.crt
+	mkdir -p certs/ca
+	openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-384 -out certs/ca/ca.key
+	openssl req -x509 -new -key certs/ca/ca.key -sha256 -days 3650 -out certs/ca/ca.crt -config certs/ca.cnf -extensions v3_ca
+
+sqlc: scripts/sql/queries.sql scripts/sql/schema.sql
+	sqlc generate
+
+all: cacert cert_server_ca_server cert_server_server proto sqlc
+
 docker_db:
 	docker run -d \
 	  --name postgres_yappa \
@@ -34,12 +58,13 @@ docker_db:
 	docker cp scripts/sql/schema.sql postgres_yappa:/schema.sql
 	docker exec -i postgres_yappa psql -U yappa -d yappa-chat -f /schema.sql
 
-clear:
+docker_clean:
+	docker cp scripts/sql/schema.sql postgres_yappa:/schema.sql
+	docker exec -i postgres_yappa psql -U yappa -d yappa-chat -f /schema.sql
+
+clean_session:
 	rm -f logs/cli/* logs/ca/* logs/serv/*
 	rm -f **.data
 
-cacert:
-	rm -f certs/ca/ca.key certs/ca/ca.crt
-	mkdir -p certs/ca
-	openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-384 -out certs/ca/ca.key
-	openssl req -x509 -new -key certs/ca/ca.key -sha256 -days 3650 -out certs/ca/ca.crt -config certs/ca.cnf -extensions v3_ca
+deep_clean: clean
+	rm -f certs/ca/* certs/ca_server/* certs/client/* certs/peer/* certs/server/* 
