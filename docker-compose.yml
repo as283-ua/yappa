@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:17
+    container_name: yappa_db
+    environment:
+      POSTGRES_USER: yappa
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: yappa-chat
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    ports:
+      - "5432:5432"
+    command: ["postgres", "-c", "shared_preload_libraries=pgcrypto"]
+
+  yappacad:
+    build:
+      context: .
+      dockerfile: Dockerfile.yappacad
+    container_name: yappacad
+    volumes:
+      - ./certs:/certs:ro
+    expose:
+      - "8443"
+    ports:
+      - "8443:8443"
+
+  yappad:
+    build:
+      context: .
+      dockerfile: Dockerfile.yappad
+    container_name: yappad
+    depends_on:
+      - yappacad
+      - db
+    environment:
+      YAPPA_DB_HOST: db:5432
+      YAPPA_DB_USER: yappa
+      YAPPA_MASTER_KEY: pass
+      YAPPACAD_ADDR: http://yappacad:8443
+    volumes:
+      - ./certs:/certs:ro
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

@@ -1,0 +1,8 @@
+FROM debian:bookworm-slim
+
+RUN mkdir -p /var/logs/yappa/chat
+COPY bin/yappacad /usr/local/bin/yappacad
+RUN ls -l /usr/local/bin/
+RUN chmod +x /usr/local/bin/yappacad
+
+CMD ["/usr/local/bin/yappacad", "-logs", "/var/logs/yappa/chat/"]

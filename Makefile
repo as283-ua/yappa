@@ -1,4 +1,4 @@
-.PHONY: cert_server cacert proto cert_server_ca_server cert_server_server \
+.PHONY: cert_server cacert proto cert_server_ca_tls cert_server_server \
 	docker_db docker_clean \
 	clean  all \
 	clean_session deep_clean \
@@ -33,8 +33,8 @@ cert_server:
 	rm certs/$(ARG)/$(ARG).csr
 	openssl verify -CAfile certs/ca/ca.crt certs/$(ARG)/$(ARG).crt
 
-cert_server_ca_server:
-	$(MAKE) cert_server ARG=ca_server
+cert_server_ca_tls:
+	$(MAKE) cert_server ARG=ca_tls
 
 cert_server_server:
 	$(MAKE) cert_server ARG=server
@@ -71,7 +71,7 @@ cert_test_bad:
 sqlc: scripts/sql/queries.sql scripts/sql/schema.sql
 	sqlc generate
 
-all: cacert cert_server_ca_server cert_server_server cert_test_ok cert_test_bad proto sqlc
+all: cacert cert_server_ca_tls cert_server_server cert_test_ok cert_test_bad proto sqlc
 
 docker_db:
 	docker run -d \
@@ -85,6 +85,9 @@ docker_db:
 	docker cp scripts/sql/schema.sql postgres_yappa:/schema.sql
 	docker exec -i postgres_yappa psql -U yappa -d yappa-chat -f /schema.sql
 
+clean:
+	rm -f bin/*
+
 docker_clean:
 	docker cp scripts/sql/schema.sql postgres_yappa:/schema.sql
 	docker exec -i postgres_yappa psql -U yappa -d yappa-chat -f /schema.sql
@@ -94,12 +97,12 @@ clean_session:
 	rm -f **.data
 
 deep_clean: clean
-	rm -rf certs/ca/* certs/ca_server/* certs/client/* certs/peer/* certs/server/* test/assets/certs/*
+	rm -rf certs/ca/* certs/ca_tls/* certs/client/* certs/peer/* certs/server/* test/assets/certs/*
 
 BIN_DIR := bin
-CLIENT_BIN := $(BIN_DIR)/client
-SERVER_BIN := $(BIN_DIR)/server
-CA_BIN     := $(BIN_DIR)/ca
+CLIENT_BIN := $(BIN_DIR)/yappa
+SERVER_BIN := $(BIN_DIR)/yappad
+CA_BIN     := $(BIN_DIR)/yappacad
 
 GO_SOURCES := $(shell find . -type f -name '*.go')
 

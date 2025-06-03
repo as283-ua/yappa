@@ -14,8 +14,8 @@ import (
 
 func main() {
 	addr := flag.String("ip", "0.0.0.0:4434", "Host IP and port")
-	cert := flag.String("cert", "certs/ca_server/ca_server.crt", "TLS Certificate")
-	key := flag.String("key", "certs/ca_server/ca_server.key", "TLS Key")
+	cert := flag.String("cert", "certs/ca_tls/ca_tls.crt", "TLS Certificate")
+	key := flag.String("key", "certs/ca_tls/ca_tls.key", "TLS Key")
 	chatServerCert := flag.String("server-cert", "certs/server/server.crt", "TLS Certificate for chat server")
 	rootCa := flag.String("ca", "certs/ca/ca.crt", "Root CA certificate")
 	caKey := flag.String("ca-key", "certs/ca/ca.key", "Root CA private key")
