@@ -1,4 +1,8 @@
-.PHONY: cert_server docker_db docker_clean clean cacert proto cert_server_ca_server cert_server_server all docker_db docker_clean clean_session deep_clean
+.PHONY: cert_server cacert proto cert_server_ca_server cert_server_server \
+	docker_db docker_clean \
+	clean  all \
+	clean_session deep_clean \
+	bin
 
 api/gen/ca/ca.pb.go: api/proto/ca.proto
 	mkdir -p api/gen/ca
@@ -68,3 +72,24 @@ clean_session:
 
 deep_clean: clean
 	rm -f certs/ca/* certs/ca_server/* certs/client/* certs/peer/* certs/server/* 
+
+BIN_DIR := bin
+CLIENT_BIN := $(BIN_DIR)/client
+SERVER_BIN := $(BIN_DIR)/server
+CA_BIN     := $(BIN_DIR)/ca
+
+GO_SOURCES := $(shell find . -type f -name '*.go')
+
+bin: proto sqlc $(CLIENT_BIN) $(SERVER_BIN) $(CA_BIN)
+
+$(CLIENT_BIN): $(GO_SOURCES)
+	mkdir -p $(BIN_DIR)
+	go build -o $@ ./cmd/client
+
+$(SERVER_BIN): $(GO_SOURCES)
+	mkdir -p $(BIN_DIR)
+	go build -o $@ ./cmd/server
+
+$(CA_BIN): $(GO_SOURCES)
+	mkdir -p $(BIN_DIR)
+	go build -o $@ ./cmd/ca
