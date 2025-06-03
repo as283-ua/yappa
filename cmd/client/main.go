@@ -119,8 +119,12 @@ func main() {
 		go service.StartListening(saveState)
 	}
 	defer func() {
-		save.SaveChats(saveState)
-		log.Println("Saved chats state")
+		err := save.SaveChats(saveState)
+		if err != nil {
+			log.Println("Chats couldn't be saved. You're screwed.", err)
+		} else {
+			log.Println("Saved chats state")
+		}
 	}()
 
 	if service.GetUsername() != "" {
