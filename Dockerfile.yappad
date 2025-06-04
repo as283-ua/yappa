@@ -4,4 +4,4 @@ RUN mkdir -p /var/logs/yappa/ca
 COPY bin/yappad /usr/local/bin/yappad
 RUN chmod +x /usr/local/bin/yappad
 
-CMD ["/usr/local/bin/yappacad", "-cert", "/certs/ca_tls/ca_tls.crt", "-key", "/certs/ca_tls/ca_tls.key", "-server-cert", "/certs/server/server.crt", "-ca", "/certs/ca/ca.crt", "-ca-key", "/certs/ca/ca.key", "-logs", "/var/logs/yappa/ca"]
+CMD ["/usr/local/bin/yappad", "-addr", "0.0.0.0:4433", "-cert", "/certs/server/server.crt", "-key", "/certs/server/server.key", "-ca", "/certs/ca/ca.crt", "-ca-addr", "yappacad:4434", "-logs", "/var/logs/yappa/chat"]

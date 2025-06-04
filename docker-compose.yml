@@ -23,9 +23,10 @@ services:
     volumes:
       - ./certs:/certs:ro
     expose:
-      - "8443"
+      - "4434"
     ports:
-      - "8443:8443"
+      - "4434:4434/tcp"
+      - "4434:4434/udp"
 
   yappad:
     build:
@@ -39,11 +40,13 @@ services:
       YAPPA_DB_HOST: db:5432
       YAPPA_DB_USER: yappa
       YAPPA_MASTER_KEY: pass
-      YAPPACAD_ADDR: http://yappacad:8443
     volumes:
       - ./certs:/certs:ro
     ports:
-      - "8080:8080"
+      - "4433:4433/tcp"
+      - "4433:4433/udp"
+    expose:
+      - "4433"
 
 volumes:
   pgdata:
