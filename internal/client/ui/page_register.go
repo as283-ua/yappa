@@ -166,7 +166,6 @@ func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ClearErrorMsg:
 		m.errorMessage = ""
 
-	// certificate shenanigans
 	case *ca.AllowUser:
 		cmd = tea.Batch(cmd, createAndSignCertificate(msg))
 	case *ca.CertResponse:
@@ -175,7 +174,6 @@ func (m RegisterPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		service.UseCertificate(
 			settings.CliSettings.CertDir+"yappa.crt",
 			settings.CliSettings.CertDir+"yappa.key")
-		m.errorMessage = "Good job, you registered!"
 		model = NewMainPage(m.save)
 	}
 

@@ -17,13 +17,16 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func messageToString(m *client.ClientEvent, senderStyle lipgloss.Style) string {
+func messageToString(m *client.ClientEvent, senderStyle lipgloss.Style, debug bool) string {
 	msg, ok := m.Payload.(*client.ClientEvent_Message)
 	if !ok {
 		return ""
 	}
 	t := time.Unix(int64(m.Timestamp), 0).UTC()
-	return fmt.Sprintf("%s - %s (serial %v)\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), m.Serial, msg.Message.Msg)
+	if debug {
+		return fmt.Sprintf("%s - %s (serial %v)\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), m.Serial, msg.Message.Msg)
+	}
+	return fmt.Sprintf("%s - %s\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), msg.Message.Msg)
 }
 
 type ChatPage struct {
@@ -34,6 +37,7 @@ type ChatPage struct {
 	vpContent    string
 	textbox      textarea.Model
 	errorMessage string
+	debugMode    bool
 
 	selfStyle lipgloss.Style
 	peerStyle lipgloss.Style
@@ -62,6 +66,20 @@ var Send = Input{
 	},
 }
 
+type DebugToggle struct{}
+
+var Debug = Input{
+	Keys:        []string{"ctrl+d"},
+	Description: "Toggle debug mode",
+	Action: func(m tea.Model) (tea.Model, tea.Cmd) {
+		_, ok := m.(*ChatPage)
+		if !ok {
+			return m, nil
+		}
+		return m, func() tea.Msg { return MsgSend{} }
+	},
+}
+
 func NewChatPage(save *client.SaveState, prev tea.Model, user *server.UserData) ChatPage {
 	textbox := textarea.New()
 	textbox.Focus()
@@ -81,6 +99,7 @@ func NewChatPage(save *client.SaveState, prev tea.Model, user *server.UserData) 
 	inputs.Add(RETURN)
 	inputs.Add(QUIT)
 	inputs.Add(HELP)
+	inputs.Add(Debug)
 
 	vp := viewport.New(120, 20)
 	vp.KeyMap.Down.SetKeys("down")
@@ -189,9 +208,9 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		text := ""
 		for _, ev := range m.chat.Events {
 			if ev.Sender == service.GetUsername() {
-				text = messageToString(ev, m.selfStyle)
+				text = messageToString(ev, m.selfStyle, m.debugMode)
 			} else {
-				text = messageToString(ev, m.peerStyle)
+				text = messageToString(ev, m.peerStyle, m.debugMode)
 			}
 			if text != "" {
 				m.vpContent += text + "\n"
@@ -248,14 +267,14 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			save.NewEvent(m.chat, m.chat.CurrentSerial+1, key, event)
 		}
 		m.textbox.SetValue("")
-		msgTxt := messageToString(event, m.selfStyle)
+		msgTxt := messageToString(event, m.selfStyle, m.debugMode)
 		if msgTxt != "" {
 			m.vpContent += msgTxt + "\n"
 			m.viewport.SetContent(m.vpContent)
 			m.viewport.GotoBottom()
 		}
 	case *client.ClientEvent:
-		msgTxt := messageToString(msg, m.peerStyle)
+		msgTxt := messageToString(msg, m.peerStyle, m.debugMode)
 		if msgTxt != "" {
 			goToBottom := false
 			if m.viewport.AtBottom() {
@@ -273,6 +292,8 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = tea.Batch(cmd, TimedCmd(5*time.Second, ClearErrorMsg{}))
 	case ClearErrorMsg:
 		m.errorMessage = ""
+	case DebugToggle:
+		m.debugMode = !m.debugMode
 	}
 
 	if model == nil {
@@ -286,7 +307,7 @@ func (m ChatPage) View() string {
 	var s string
 
 	s = fmt.Sprintf("Chat with '%s'\n", m.peer.Username)
-	if m.chat != nil {
+	if m.chat != nil && m.debugMode {
 		s += fmt.Sprintf("Inbox id: %v\n", m.chat.Peer.InboxId)
 		s += fmt.Sprintf("Current expected message serial: %v\n", m.chat.CurrentSerial)
 		s += fmt.Sprintf("Initiator: %v\n", m.chat.Initiator)

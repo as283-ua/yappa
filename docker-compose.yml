@@ -40,7 +40,7 @@ services:
     environment:
       YAPPA_DB_HOST: db:5432
       YAPPA_DB_USER: yappa
-      YAPPA_MASTER_KEY: pass
+      YAPPA_MASTER_KEY: pass  # please change this (!)
     volumes:
       - ./certs:/certs:ro
       - ./cfg:/etc/yappa:ro

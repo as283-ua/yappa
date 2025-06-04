@@ -226,7 +226,8 @@ func (m FindPage) View() string {
  ██       ██   ██  ██  █▄   ██      ██  ██  ▄ ▀█▄▄ ██       ██     ▄ ▀█▄▄ 
 ▄██▄     ▄██▄ ▄██▄ ██▄ ▀█▄▄▀██▄     ▀█▄▄▀█▄ █▀▄▄█▀  ▀█▄▄▄▀ ▄██▄    █▀▄▄█▀ `
 
-	s += "\n\n\n" + m.search.View() + "\n\n\n"
+	s += "\n\n\n"
+	// s += m.search.View() + "\n\n\n"
 
 	boundUp := m.cursor - 2
 	boundDown := m.cursor + 2
