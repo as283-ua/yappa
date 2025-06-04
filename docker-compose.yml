@@ -22,6 +22,7 @@ services:
     container_name: yappacad
     volumes:
       - ./certs:/certs:ro
+      - ./cfg:/etc/yappa:ro
     expose:
       - "4434"
     ports:
@@ -42,6 +43,7 @@ services:
       YAPPA_MASTER_KEY: pass
     volumes:
       - ./certs:/certs:ro
+      - ./cfg:/etc/yappa:ro
     ports:
       - "4433:4433/tcp"
       - "4433:4433/udp"

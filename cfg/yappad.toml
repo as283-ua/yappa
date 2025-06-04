@@ -1,10 +1,12 @@
+# example with values used in docker compose
+
 addr = "0.0.0.0:4433"
-logs = "logs/serv/"
+logs = "/var/log/yappa/chat"
 
 [tls]
-cert = "certs/server/server.crt"
-key = "certs/server/server.key"
+cert = "/certs/server/server.crt"
+key = "/certs/server/server.key"
 
 [ca]
-addr = "yappa.io:4434"
-cert = "certs/ca/ca.crt"
+addr = "yappacad:4434"
+cert = "/certs/ca/ca.crt"

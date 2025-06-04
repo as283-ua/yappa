@@ -1,7 +1,8 @@
 FROM debian:bookworm-slim
 
-RUN mkdir -p /var/logs/yappa/chat
+RUN mkdir -p /var/log/yappa/chat
+RUN mkdir -p /etc/yappa
 COPY bin/yappacad /usr/local/bin/yappacad
 RUN chmod +x /usr/local/bin/yappacad
 
-CMD ["/usr/local/bin/yappacad", "-cert", "/certs/ca_tls/ca_tls.crt", "-key", "/certs/ca_tls/ca_tls.key", "-server-cert", "/certs/server/server.crt", "-ca", "/certs/ca/ca.crt", "-ca-key", "/certs/ca/ca.key", "-logs", "/var/logs/yappa/ca"]
+CMD ["/usr/local/bin/yappacad", "-config", "/etc/yappa/yappacad.toml"]

@@ -1,11 +1,13 @@
-addr = "0.0.0.0:4433"
-logs = "logs/serv/"
-cacert = "certs/ca/ca.crt"
-key = "certs/ca/ca.key"
+# example with values used in docker compose
+
+addr = "0.0.0.0:4434"
+logs = "/var/log/yappa/ca"
+cacert = "/certs/ca/ca.crt"
+key = "/certs/ca/ca.key"
 
 [tls]
-cert = "certs/ca_server/ca_server.crt"
-key = "certs/ca_server/ca_server.key"
+cert = "/certs/ca_tls/ca_tls.crt"
+key = "/certs/ca_tls/ca_tls.key"
 
 [chat]
-cert = "certs/server/server.crt"
+cert = "/certs/server/server.crt"
