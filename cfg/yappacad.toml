@@ -1,0 +1,11 @@
+addr = "0.0.0.0:4433"
+logs = "logs/serv/"
+cacert = "certs/ca/ca.crt"
+key = "certs/ca/ca.key"
+
+[tls]
+cert = "certs/ca_server/ca_server.crt"
+key = "certs/ca_server/ca_server.key"
+
+[chat]
+cert = "certs/server/server.crt"

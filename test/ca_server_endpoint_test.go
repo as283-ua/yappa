@@ -32,12 +32,16 @@ func RunCaServer() *http3.Server {
 }
 
 var DefaultCaArgs = &settings.CaCfg{
-	Addr:           "127.0.0.1:4436",
-	Cert:           "../certs/ca_tls/ca_tls.crt",
-	Key:            "../certs/ca_tls/ca_tls.key",
-	ChatServerCert: "../certs/server/server.crt",
-	RootCa:         "../certs/ca/ca.crt",
-	CaKey:          "../certs/ca/ca.key",
+	Addr: "127.0.0.1:4436",
+	Tls: settings.TlsCfg{
+		Cert: "../certs/ca_tls/ca_tls.crt",
+		Key:  "../certs/ca_tls/ca_tls.key",
+	},
+	Chat: settings.ChatServerCfg{
+		Cert: "../certs/server/server.crt",
+	},
+	Cacert: "../certs/ca/ca.crt",
+	Key:    "../certs/ca/ca.key",
 }
 
 func TestAllowNoCert(t *testing.T) {

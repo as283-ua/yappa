@@ -16,6 +16,16 @@ import (
 	"github.com/as283-ua/yappa/internal/server/settings"
 )
 
+var (
+	addr    = flag.String("addr", "0.0.0.0:4433", "Host IP and port")
+	cert    = flag.String("cert", "certs/server/server.crt", "TLS Certificate")
+	key     = flag.String("key", "certs/server/server.key", "TLS Key")
+	caCert  = flag.String("ca", "certs/ca/ca.crt", "CA certificate")
+	caAddr  = flag.String("ca-addr", "yappa.io:4434", "CA server ip address and port")
+	logDir  = flag.String("logs", "logs/serv/", "Log directory")
+	cfgPath = flag.String("config", "cfg/yappad.toml", "Configuration file")
+)
+
 func readCfgFile(path string) (*settings.ChatCfg, error) {
 	if path == "" {
 		return nil, errors.New("empty path passed to be read as config")
@@ -39,16 +49,6 @@ func readCfgFile(path string) (*settings.ChatCfg, error) {
 
 	return cfg, nil
 }
-
-var (
-	addr    = flag.String("addr", "0.0.0.0:4433", "Host IP and port")
-	cert    = flag.String("cert", "certs/server/server.crt", "TLS Certificate")
-	key     = flag.String("key", "certs/server/server.key", "TLS Key")
-	caCert  = flag.String("ca", "certs/ca/ca.crt", "CA certificate")
-	caAddr  = flag.String("ca-addr", "yappa.io:4434", "CA server ip address and port")
-	logDir  = flag.String("logs", "logs/serv/", "Log directory")
-	cfgPath = flag.String("config", "cfg/yappad.toml", "Configuration file")
-)
 
 // apply default values or those specified explicitly through command line options
 func applyCmdArgs(cfg *settings.ChatCfg) {

@@ -35,14 +35,14 @@ func SetupServer(cmdArgs *settings.CaCfg) (*http3.Server, error) {
 
 	tlsConfig = getTlsConfig()
 
-	serverCertSerial, err := getCertSerialN(settings.CaSettings.ChatServerCert)
+	serverCertSerial, err := getCertSerialN(settings.CaSettings.Chat.Cert)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if cmdArgs.LogDir != "" {
-		err = logging.SetOutput(cmdArgs.LogDir)
+	if cmdArgs.Logs != "" {
+		err = logging.SetOutput(cmdArgs.Logs)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -71,13 +71,13 @@ func getTlsConfig() *tls.Config {
 		logger.Fatal(err)
 	}
 
-	cert, err := tls.LoadX509KeyPair(settings.CaSettings.Cert, settings.CaSettings.Key)
+	cert, err := tls.LoadX509KeyPair(settings.CaSettings.Tls.Cert, settings.CaSettings.Tls.Key)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
 	rootCAs := x509.NewCertPool()
-	caCertPath := settings.CaSettings.RootCa
+	caCertPath := settings.CaSettings.Cacert
 
 	caCertBytes, err := os.ReadFile(caCertPath)
 	if err != nil {
@@ -111,7 +111,7 @@ func getCertSerialN(serverCert string) (*big.Int, error) {
 }
 
 func loadCA() error {
-	caCertBytes, err := os.ReadFile(settings.CaSettings.RootCa)
+	caCertBytes, err := os.ReadFile(settings.CaSettings.Cacert)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func loadCA() error {
 		return err
 	}
 
-	caKeyBytes, err := os.ReadFile(settings.CaSettings.CaKey)
+	caKeyBytes, err := os.ReadFile(settings.CaSettings.Key)
 	if err != nil {
 		return err
 	}
