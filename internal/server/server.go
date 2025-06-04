@@ -69,13 +69,13 @@ func SetupPgxDb(ctx context.Context) (*auth.PgxUserRepo, *chat.PgxChatRepo) {
 }
 
 func getTlsConfig() (*tls.Config, error) {
-	cert, err := tls.LoadX509KeyPair(settings.ChatSettings.Cert, settings.ChatSettings.Key)
+	cert, err := tls.LoadX509KeyPair(settings.ChatSettings.Tls.Cert, settings.ChatSettings.Tls.Key)
 	if err != nil {
 		return nil, err
 	}
 
 	rootCAs := x509.NewCertPool()
-	caCertPath := settings.ChatSettings.CaCert
+	caCertPath := settings.ChatSettings.Ca.Cert
 
 	caCertBytes, err := os.ReadFile(caCertPath)
 
@@ -109,12 +109,12 @@ func SetupServer(cfg *settings.ChatCfg, authRepo auth.UserRepo, chatRepo chat.Ch
 	auth.Repo = authRepo
 	chat.Repo = chatRepo
 
-	err = common.InitHttp3Client(settings.ChatSettings.CaCert)
+	err = common.InitHttp3Client(settings.ChatSettings.Ca.Cert)
 	if err != nil {
 		return nil, err
 	}
 
-	common.AddTlsCert(cfg.Cert, cfg.Key)
+	common.AddTlsCert(cfg.Tls.Cert, cfg.Tls.Key)
 
 	tlsConfig, err = getTlsConfig()
 
@@ -122,8 +122,8 @@ func SetupServer(cfg *settings.ChatCfg, authRepo auth.UserRepo, chatRepo chat.Ch
 		return nil, err
 	}
 
-	if cfg.LogDir != "" {
-		err = logging.SetOutput(cfg.LogDir)
+	if cfg.Logs != "" {
+		err = logging.SetOutput(cfg.Logs)
 		if err != nil {
 			log.Fatal(err)
 		}

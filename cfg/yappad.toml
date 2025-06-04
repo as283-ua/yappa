@@ -1,0 +1,10 @@
+addr = "0.0.0.0:4433"
+logs = "logs/serv/"
+
+[tls]
+cert = "certs/server/server.crt"
+key = "certs/server/server.key"
+
+[ca]
+addr = "yappa.io:4434"
+cert = "certs/ca/ca.crt"

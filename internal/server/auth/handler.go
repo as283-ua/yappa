@@ -70,7 +70,7 @@ func RegisterInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	caAllowUrl := fmt.Sprintf("https://%v/allow", settings.ChatSettings.CaAddr)
+	caAllowUrl := fmt.Sprintf("https://%v/allow", settings.ChatSettings.Ca.Addr)
 	caResp, err := common.HttpClient.Post(caAllowUrl, "application/x-protobuf", bytes.NewReader(caReq))
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

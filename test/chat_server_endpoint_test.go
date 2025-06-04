@@ -62,17 +62,21 @@ func RunChatServer() *http3.Server {
 }
 
 var DefaultChatServerArgs settings.ChatCfg = settings.ChatCfg{
-	Addr:   "127.0.0.1:4435",
-	Cert:   "../certs/server/server.crt",
-	Key:    "../certs/server/server.key",
-	CaCert: "../certs/ca/ca.crt",
-	CaAddr: DefaultCaArgs.Addr,
+	Addr: "127.0.0.1:4435",
+	Tls: settings.TlsCfg{
+		Cert: "../certs/server/server.crt",
+		Key:  "../certs/server/server.key",
+	},
+	Ca: settings.CaCfg{
+		Cert: "../certs/ca/ca.crt",
+		Addr: DefaultCaArgs.Addr,
+	},
 }
 
 func TestRegister(t *testing.T) {
 	setup()
 
-	client := GetHttp3Client(TEST_CERTS_DIR, "", DefaultChatServerArgs.CaCert)
+	client := GetHttp3Client(TEST_CERTS_DIR, "", DefaultChatServerArgs.Ca.Cert)
 
 	username := "User1"
 
@@ -153,7 +157,7 @@ func TestRequireCertClient(t *testing.T) {
 	setup()
 
 	t.Run("no_cert_errors", func(t *testing.T) {
-		client := GetHttp3Client(TEST_CERTS_DIR, "", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "", DefaultChatServerArgs.Ca.Cert)
 
 		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/chat/new")
 		if !assert.NoError(t, err) {
@@ -163,7 +167,7 @@ func TestRequireCertClient(t *testing.T) {
 	})
 
 	t.Run("with_cert_ok", func(t *testing.T) {
-		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.Ca.Cert)
 
 		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/chat/new")
 		if !assert.NoError(t, err) {
@@ -173,7 +177,7 @@ func TestRequireCertClient(t *testing.T) {
 	})
 
 	t.Run("with_incorrect_cert_errors", func(t *testing.T) {
-		client := GetHttp3Client(TEST_CERTS_DIR, "test_bad", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_bad", DefaultChatServerArgs.Ca.Cert)
 
 		r, err := client.Get("https://" + DefaultChatServerArgs.Addr + "/chat/new")
 		if !assert.NoError(t, err) {
@@ -193,7 +197,7 @@ func TestConnection(t *testing.T) {
 		if !assert.NoError(t, err) {
 			return
 		}
-		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.Ca.Cert)
 
 		str, err := common.Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
 		if !assert.NoError(t, err) {
@@ -230,7 +234,7 @@ func TestConnection(t *testing.T) {
 		if !assert.NoError(t, err) {
 			return
 		}
-		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.Ca.Cert)
 
 		str, err := common.Http3Stream(context.Background(), u, client.Transport.(*http3.Transport), http.Header{})
 		if !assert.NoError(t, err) {
@@ -263,7 +267,7 @@ func TestChatInit(t *testing.T) {
 	setup()
 
 	t.Run("init_chat", func(t *testing.T) {
-		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.CaCert)
+		client := GetHttp3Client(TEST_CERTS_DIR, "test_ok", DefaultChatServerArgs.Ca.Cert)
 
 		url := fmt.Sprintf("https://%v/chat/init", DefaultChatServerArgs.Addr)
 		resp, err := client.Get(url)
