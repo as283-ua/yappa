@@ -2,4 +2,5 @@
 **/*.crt
 **/*.csr
 **/*.pub
+**/*.srl
 !.gitignore

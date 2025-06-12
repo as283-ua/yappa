@@ -18,15 +18,19 @@ import (
 )
 
 func messageToString(m *client.ClientEvent, senderStyle lipgloss.Style, debug bool) string {
-	msg, ok := m.Payload.(*client.ClientEvent_Message)
-	if !ok {
-		return ""
-	}
 	t := time.Unix(int64(m.Timestamp), 0).UTC()
-	if debug {
-		return fmt.Sprintf("%s - %s (serial %v)\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), m.Serial, msg.Message.Msg)
+	switch msg := m.Payload.(type) {
+	case *client.ClientEvent_Message:
+		if debug {
+			return fmt.Sprintf("%s - %s (serial %v)\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), m.Serial, msg.Message.Msg)
+		}
+		return fmt.Sprintf("%s - %s\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), msg.Message.Msg)
+	case *client.ClientEvent_KeyRotation:
+		if debug {
+			return fmt.Sprintf("%s - %s (serial %v) ~ ML-KEM Key Rotation\n%v ... %v\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), m.Serial, msg.KeyRotation.KeyExchangeData[:5], msg.KeyRotation.KeyExchangeData[len(msg.KeyRotation.KeyExchangeData)-5:])
+		}
 	}
-	return fmt.Sprintf("%s - %s\n%s\n", senderStyle.Render(m.Sender), t.Format("2 Jan 2006 15:04:05"), msg.Message.Msg)
+	return ""
 }
 
 type ChatPage struct {
@@ -76,7 +80,7 @@ var Debug = Input{
 		if !ok {
 			return m, nil
 		}
-		return m, func() tea.Msg { return MsgSend{} }
+		return m, func() tea.Msg { return DebugToggle{} }
 	},
 }
 
@@ -247,10 +251,17 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		save.NewEvent(m.chat, m.chat.CurrentSerial+1, service.Ratchet(m.chat.Key), event)
+		m.textbox.SetValue("")
+		msgTxt := messageToString(event, m.selfStyle, m.debugMode)
+		if msgTxt != "" {
+			m.vpContent += msgTxt + "\n"
+			m.viewport.SetContent(m.vpContent)
+			m.viewport.GotoBottom()
+		}
 
 		if service.KeyExchNeeded(m.chat) {
 			log.Printf("Sending key exchange on send. Current serial = %v, first message = %v. Frequency = %v", m.chat.CurrentSerial, m.chat.SerialStart, service.MLKEM_RATCHET_INTERVAL)
-			encMsg, event, key, err := service.KeyExchangeEvent(m.chat, m.encapKey)
+			encMsg, kevent, key, err := service.KeyExchangeEvent(m.chat, m.encapKey)
 			if err != nil {
 				cmd = tea.Batch(cmd, func() tea.Msg { return err })
 				break
@@ -264,17 +275,20 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = tea.Batch(cmd, func() tea.Msg { return err })
 				break
 			}
-			save.NewEvent(m.chat, m.chat.CurrentSerial+1, key, event)
-		}
-		m.textbox.SetValue("")
-		msgTxt := messageToString(event, m.selfStyle, m.debugMode)
-		if msgTxt != "" {
-			m.vpContent += msgTxt + "\n"
-			m.viewport.SetContent(m.vpContent)
-			m.viewport.GotoBottom()
+			save.NewEvent(m.chat, m.chat.CurrentSerial+1, key, kevent)
+			msgTxt := messageToString(kevent, m.selfStyle, m.debugMode)
+			if msgTxt != "" {
+				m.vpContent += msgTxt + "\n"
+				m.viewport.SetContent(m.vpContent)
+				m.viewport.GotoBottom()
+			}
 		}
 	case *client.ClientEvent:
-		msgTxt := messageToString(msg, m.peerStyle, m.debugMode)
+		style := m.peerStyle
+		if msg.Sender != m.peer.Username {
+			style = m.selfStyle
+		}
+		msgTxt := messageToString(msg, style, m.debugMode)
 		if msgTxt != "" {
 			goToBottom := false
 			if m.viewport.AtBottom() {
@@ -294,6 +308,20 @@ func (m ChatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorMessage = ""
 	case DebugToggle:
 		m.debugMode = !m.debugMode
+		m.vpContent = ""
+		text := ""
+		for _, ev := range m.chat.Events {
+			if ev.Sender == service.GetUsername() {
+				text = messageToString(ev, m.selfStyle, m.debugMode)
+			} else {
+				text = messageToString(ev, m.peerStyle, m.debugMode)
+			}
+			if text != "" {
+				m.vpContent += text + "\n"
+			}
+		}
+		m.viewport.SetContent(m.vpContent)
+		m.viewport.GotoBottom()
 	}
 
 	if model == nil {

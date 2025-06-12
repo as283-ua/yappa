@@ -139,7 +139,7 @@ func StartListening(saveState *client.SaveState) {
 					log.Println("Error getting peer's public key:", err)
 					continue
 				}
-				encMsg, event, key, err := KeyExchangeEvent(chat, encapKey)
+				encMsg, kevent, key, err := KeyExchangeEvent(chat, encapKey)
 				if err != nil {
 					log.Println("Error in key exchange message creation:", err)
 					continue
@@ -153,7 +153,8 @@ func StartListening(saveState *client.SaveState) {
 					log.Println("Error sending key exchange:", err)
 					continue
 				}
-				save.NewEvent(chat, chat.CurrentSerial+1, key, event)
+				save.NewEvent(chat, chat.CurrentSerial+1, key, kevent)
+				chatCli.Emit(chat.Peer.InboxId, kevent)
 			}
 		}
 	}
